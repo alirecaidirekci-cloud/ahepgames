@@ -1,0 +1,25 @@
+{
+  "rules": {
+    "users": {
+      ".read": "auth != null",
+      "$user": {
+        ".write": "auth != null",
+        ".validate": "newData.child('name').isString() && newData.child('name').val().length <= 16"
+      }
+    },
+    "scores": {
+      ".read": "auth != null",
+      "$user": {
+        ".write": "auth != null"
+      }
+    },
+    "rooms": {
+      "$game": {
+        ".read": "auth != null",
+        "$room": {
+          ".write": "auth != null"
+        }
+      }
+    }
+  }
+}
