@@ -1,30 +1,33 @@
 // Questions come from Open Trivia DB (free, no key). Each question: {q, answers[4], correct, cat}
 import { shuffle } from "../lib.js";
 
+// [id, English name, Turkish name, number of 4-option questions (counted October 2026)]
 export const CATEGORIES = [
-  [9, "General Knowledge", "Genel Kültür"],
-  [21, "Sports", "Spor"],
-  [22, "Geography", "Coğrafya"],
-  [23, "History", "Tarih"],
-  [17, "Science & Nature", "Bilim ve Doğa"],
-  [11, "Film", "Sinema"],
-  [12, "Music", "Müzik"],
-  [14, "Television", "Televizyon"],
-  [15, "Video Games", "Video Oyunları"],
-  [18, "Computers", "Bilgisayar"],
-  [19, "Mathematics", "Matematik"],
-  [20, "Mythology", "Mitoloji"],
-  [10, "Books", "Kitaplar"],
-  [25, "Art", "Sanat"],
-  [27, "Animals", "Hayvanlar"],
-  [28, "Vehicles", "Taşıtlar"],
-  [24, "Politics", "Siyaset"],
-  [26, "Celebrities", "Ünlüler"],
-  [16, "Board Games", "Masa Oyunları"],
-  [29, "Comics", "Çizgi Roman"],
-  [31, "Anime & Manga", "Anime ve Manga"],
-  [32, "Cartoons", "Çizgi Film"],
+  [9, "General Knowledge", "Genel Kültür", 380],
+  [21, "Sports", "Spor", 160],
+  [22, "Geography", "Coğrafya", 320],
+  [23, "History", "Tarih", 356],
+  [17, "Science & Nature", "Bilim ve Doğa", 250],
+  [11, "Film", "Sinema", 268],
+  [12, "Music", "Müzik", 439],
+  [14, "Television", "Televizyon", 173],
+  [15, "Video Games", "Video Oyunları", 1018],
+  [18, "Computers", "Bilgisayar", 149],
+  [19, "Mathematics", "Matematik", 61],
+  [20, "Mythology", "Mitoloji", 58],
+  [10, "Books", "Kitaplar", 109],
+  [25, "Art", "Sanat", 50],
+  [27, "Animals", "Hayvanlar", 69],
+  [28, "Vehicles", "Taşıtlar", 69],
+  [24, "Politics", "Siyaset", 53],
+  [26, "Celebrities", "Ünlüler", 48],
+  [16, "Board Games", "Masa Oyunları", 66],
+  [29, "Comics", "Çizgi Roman", 74],
+  [31, "Anime & Manga", "Anime ve Manga", 177],
+  [32, "Cartoons", "Çizgi Film", 97],
 ];
+
+export const poolSize = (ids) => CATEGORIES.filter((c) => ids.includes(c[0])).reduce((sum, c) => sum + c[3], 0);
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

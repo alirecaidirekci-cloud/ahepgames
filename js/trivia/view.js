@@ -2,15 +2,15 @@
 import { state, act, setUi, roomHeader } from "../app.js";
 import { db } from "../db.js";
 import { t, getLang } from "../i18n.js";
-import { html, nothing, fmtTime, roomPlayers, awardOnce } from "../lib.js";
+import { html, nothing, fmtTime, fmtNum, roomPlayers, awardOnce } from "../lib.js";
 import * as logic from "./logic.js";
-import { CATEGORIES, loadQuestions } from "./questions.js";
+import { CATEGORIES, loadQuestions, poolSize } from "./questions.js";
 
 export const MAX_PLAYERS = logic.MAX_PLAYERS;
 export const reduce = logic.reduce;
 export const needsTick = (room, now) => room.status === "playing" && now >= room.deadline;
 export const newRoomFields = () => ({ cats: [9, 21] });
-export const info = () => ({ q: logic.QUESTIONS, cats: CATEGORIES.length, min: logic.ANSWER_MS / 60000, minTeam: 2 });
+export const info = () => ({ q: logic.QUESTIONS, pool: fmtNum(poolSize(CATEGORIES.map((c) => c[0]))), cats: CATEGORIES.length, min: logic.ANSWER_MS / 60000, minTeam: 2 });
 
 export function onRoom(room, code) {
   if (room?.status === "ended" && !room.scored) {
@@ -84,11 +84,12 @@ function lobby() {
       <h3>${t("subjects")}</h3>
       <div class="chips">
         ${CATEGORIES.map(
-          ([id]) => html`<button class=${cats.includes(id) ? "chip on" : "chip"} ?disabled=${!isHost} @click=${() => toggleCat(id)}>
-            ${catName(id)}
+          ([id, , , count]) => html`<button class=${cats.includes(id) ? "chip on" : "chip"} ?disabled=${!isHost} @click=${() => toggleCat(id)}>
+            ${catName(id)} <small>${count}</small>
           </button>`
         )}
       </div>
+      <p class="info">${t("poolSelected", { n: fmtNum(poolSize(cats)) })}</p>
       ${t("triviaLangNote") ? html`<p class="hint">${t("triviaLangNote")}</p>` : nothing}
     </div>
     ${isHost

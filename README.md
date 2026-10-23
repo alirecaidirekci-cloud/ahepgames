@@ -56,7 +56,8 @@ Share the link with your friends. 🎉
   The finder gets 70%, the other guessers share 30%.
 
 **Team Trivia** (2 teams, at least 2 players each)
-- The host picks subjects. Questions come from Open Trivia DB (in English).
+- The host picks subjects. Questions come from Open Trivia DB (in English): 4,444 four-option
+  questions across 22 subjects (counts per subject are in `js/trivia/questions.js`).
 - Coin flip decides who starts; the starting team alternates every question.
 - 20 questions, 2 minutes each. Only the team captain submits; teammates can suggest.
 - Wrong answer or time up → the other team gets 30 seconds to steal the point.

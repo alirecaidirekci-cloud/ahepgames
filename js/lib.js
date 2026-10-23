@@ -1,6 +1,7 @@
 // Shared helpers: templating (lit-html), rooms, scores, formatting.
 export { html, render, nothing } from "https://cdn.jsdelivr.net/npm/lit-html@3.1.4/lit-html.js";
 import { db, arr } from "./db.js";
+import { getLang } from "./i18n.js";
 
 export { arr };
 
@@ -14,6 +15,8 @@ export function fmtTime(ms) {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
 }
+
+export const fmtNum = (n) => n.toLocaleString(getLang() === "tr" ? "tr-TR" : "en-US");
 
 export function shuffle(a) {
   a = a.slice();
