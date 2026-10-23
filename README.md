@@ -1,4 +1,4 @@
-# Friends Arena ⚽🧠
+# AHEP Games - Cadalozlar ⚽🧠
 
 Multiplayer games for friends: **Guess the Footballer** and **Team Trivia**.
 Users only pick a username (no password); points are stored per user per game.

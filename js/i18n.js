@@ -1,7 +1,7 @@
 // English / Turkish UI strings. t("key", {var}) fills {var} placeholders.
 const STR = {
   en: {
-    appName: "Friends Arena",
+    appName: "AHEP Games - Cadalozlar",
     localMode: "Local demo mode: data is stored only in this browser. Open more tabs to play as other users.",
     chooseName: "Pick a username",
     nameHint: "3–16 letters, numbers or _. No password needed.",
@@ -116,7 +116,7 @@ const STR = {
     triviaLangNote: "",
   },
   tr: {
-    appName: "Arkadaş Arenası",
+    appName: "AHEP Games - Cadalozlar",
     localMode: "Yerel demo modu: veriler sadece bu tarayıcıda tutulur. Başka oyuncu olmak için yeni sekme açın.",
     chooseName: "Bir kullanıcı adı seç",
     nameHint: "3–16 harf, rakam veya _. Şifre gerekmez.",
