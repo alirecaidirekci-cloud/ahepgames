@@ -49,15 +49,17 @@ Share the link with your friends. 🎉
 - One player (the *picker*) secretly picks one of 500 footballers (search, filters or random).
 - The others ask yes/no questions from the built-in pool (nationality, leagues, clubs, position,
   appearance, achievements). Answers are automatic. The grid of possible players shrinks after each answer.
-- 10 questions and 6 guesses in total, split evenly between guessers. Leftovers are *shared*:
+- 10 questions and 2 guesses in total, split evenly between guessers. Leftovers are *shared*:
   a guesser proposes one, and all other guessers must agree.
 - 10 minutes per round. If nobody finds the player (time up or guesses used up), the picker gets 500 pts.
 - Pot = 1000 − 50 × questions − 50 × wrong guesses − 30 × minutes (min 100).
   The finder gets 70%, the other guessers share 30%.
 
 **Team Trivia** (2 teams, at least 2 players each)
-- The host picks subjects. Questions come from Open Trivia DB (in English): 4,444 four-option
+- The host picks subjects. Questions come from Open Trivia DB (in English): 4,444 multiple-choice
   questions across 22 subjects (counts per subject are in `js/trivia/questions.js`).
+- Each question shows 10 options. Open Trivia DB supplies 1 right and 3 wrong answers; the other
+  6 wrong answers are nearby numbers or similar-looking answers borrowed from other questions.
 - Coin flip decides who starts; the starting team alternates every question.
 - 20 questions, 2 minutes each. Only the team captain submits; teammates can suggest.
 - Wrong answer or time up → the other team gets 30 seconds to steal the point.

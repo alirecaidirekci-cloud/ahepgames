@@ -6,7 +6,7 @@ import { questionById } from "./data.js";
 export const FOOTBALLER_COUNT = 500; // size of data/players.json
 export const MAX_PLAYERS = 6;
 export const TOTAL_QUESTIONS = 10;
-export const TOTAL_GUESSES = 6;
+export const TOTAL_GUESSES = 2;
 export const ROUND_MS = 10 * 60 * 1000;
 
 // Even split; the remainder is shared and needs everyone's agreement.

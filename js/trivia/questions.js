@@ -1,7 +1,7 @@
-// Questions come from Open Trivia DB (free, no key). Each question: {q, answers[4], correct, cat}
+// Questions come from Open Trivia DB (free, no key). Each question: {q, answers[10], correct, cat}
 import { shuffle } from "../lib.js";
 
-// [id, English name, Turkish name, number of 4-option questions (counted October 2026)]
+// [id, English name, Turkish name, number of multiple-choice questions (counted October 2026)]
 export const CATEGORIES = [
   [9, "General Knowledge", "Genel Kültür", 380],
   [21, "Sports", "Spor", 160],
@@ -43,18 +43,56 @@ async function fetchCategory(cat, amount) {
   return [];
 }
 
+export const OPTIONS = 10;
+
 export async function loadQuestions(cats, total) {
-  const per = Math.ceil(total / cats.length) + 2;
+  // Fetch extra questions: the unused ones still supply wrong answers for the others.
+  const per = Math.min(50, Math.max(30, Math.ceil(total / cats.length) + 2));
+  const d = decodeURIComponent;
   let all = [];
   for (let i = 0; i < cats.length; i++) {
     if (i > 0) await sleep(5200);
-    all = all.concat((await fetchCategory(cats[i], Math.min(50, per))).map((r) => ({ ...r, catId: cats[i] })));
+    const got = await fetchCategory(cats[i], per);
+    all = all.concat(
+      got.map((r) => ({ q: d(r.question), correct: d(r.correct_answer), wrong: r.incorrect_answers.map(d), cat: cats[i] }))
+    );
   }
-  const d = decodeURIComponent;
-  return shuffle(all)
-    .slice(0, total)
-    .map((r) => {
-      const answers = shuffle([r.correct_answer, ...r.incorrect_answers].map(d));
-      return { q: d(r.question), answers, correct: answers.indexOf(d(r.correct_answer)), cat: r.catId };
-    });
+  all = shuffle(all);
+  return all.slice(0, total).map((r) => {
+    const answers = shuffle([r.correct, ...r.wrong, ...extraWrong(r, all, OPTIONS - 1 - r.wrong.length)]);
+    return { q: r.q, answers, correct: answers.indexOf(r.correct), cat: r.cat };
+  });
+}
+
+// Open Trivia DB gives 3 wrong answers; the rest are made up here.
+// Numbers get nearby numbers; text answers borrow similar-looking answers from other questions.
+function extraWrong(r, all, n) {
+  const taken = new Set([r.correct, ...r.wrong].map((a) => a.toLowerCase()));
+  const out = [];
+  const add = (a) => {
+    if (out.length < n && a && !taken.has(String(a).toLowerCase())) {
+      taken.add(String(a).toLowerCase());
+      out.push(String(a));
+    }
+  };
+  if (/^-?\d+$/.test(r.correct)) {
+    const v = Number(r.correct);
+    const isYear = v >= 1000 && v <= 2100;
+    for (let tries = 0; out.length < n && tries < 200; tries++) {
+      const spread = isYear ? 15 : Math.max(3, Math.round(Math.abs(v) * 0.6));
+      const c = v + Math.round((Math.random() * 2 - 1) * spread);
+      if (c !== v && (v < 0 || c >= 0)) add(c);
+    }
+  }
+  const shape = (a) => [/^-?\d+$/.test(a), a.split(/\s+/).length, a.length];
+  const [num, words, len] = shape(r.correct);
+  const score = (a) => {
+    const [n2, w2, l2] = shape(a);
+    return (n2 === num ? 0 : 100) + Math.abs(w2 - words) * 5 + Math.abs(l2 - len) / 3 + Math.random() * 6;
+  };
+  for (const pool of [all.filter((x) => x.cat === r.cat && x !== r), all.filter((x) => x !== r)]) {
+    const candidates = pool.flatMap((x) => [x.correct, ...x.wrong]).map((a) => [score(a), a]);
+    for (const [, a] of candidates.sort((x, y) => x[0] - y[0])) add(a);
+  }
+  return out;
 }

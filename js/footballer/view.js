@@ -123,7 +123,7 @@ function playing() {
   return html`
     <div class="status-bar">
       <span class="timer ${left < 60000 ? "urgent" : ""}">⏱ ${fmtTime(left)}</span>
-      <span>${t("questionsCount", { used: u.usedQ, g: u.usedG })}</span>
+      <span>${t("questionsCount", { used: u.usedQ, g: u.usedG, tq: logic.TOTAL_QUESTIONS, tg: logic.TOTAL_GUESSES })}</span>
       <span>🎯 ${t("picker")}: ${nameOf(room.picker)}</span>
     </div>
     <div class="cols">

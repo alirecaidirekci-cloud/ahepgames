@@ -159,7 +159,7 @@ input, select {
 .question { font-size: 1.3rem; font-weight: 600; margin: 14px 0; }
 .phase-msg { font-weight: 700; }
 .answers { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.answer { text-align: left; padding: 14px; font-size: 1rem; display: flex; flex-direction: column; gap: 4px; }
+.answer { text-align: left; padding: 10px 14px; font-size: 1rem; display: flex; flex-direction: column; gap: 4px; }
 .answer:disabled { opacity: 1; cursor: default; }
 .answer.right { background: var(--yes); color: #fff; border-color: var(--yes); }
 .answer.wrong { background: var(--no); color: #fff; border-color: var(--no); }
