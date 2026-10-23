@@ -1,4 +1,4 @@
-// Questions come from Open Trivia DB (free, no key). Each question: {q, answers[10], correct, cat}
+// Questions come from Open Trivia DB (free, no key). Each question: {q, answers[10], correct, cat, diff}
 import { shuffle } from "../lib.js";
 
 // [id, English name, Turkish name, number of multiple-choice questions (counted October 2026)]
@@ -54,13 +54,13 @@ export async function loadQuestions(cats, total) {
     if (i > 0) await sleep(5200);
     const got = await fetchCategory(cats[i], per);
     all = all.concat(
-      got.map((r) => ({ q: d(r.question), correct: d(r.correct_answer), wrong: r.incorrect_answers.map(d), cat: cats[i] }))
+      got.map((r) => ({ q: d(r.question), correct: d(r.correct_answer), wrong: r.incorrect_answers.map(d), cat: cats[i], diff: d(r.difficulty) }))
     );
   }
   all = shuffle(all);
   return all.slice(0, total).map((r) => {
     const answers = shuffle([r.correct, ...r.wrong, ...extraWrong(r, all, OPTIONS - 1 - r.wrong.length)]);
-    return { q: r.q, answers, correct: answers.indexOf(r.correct), cat: r.cat };
+    return { q: r.q, answers, correct: answers.indexOf(r.correct), cat: r.cat, diff: r.diff };
   });
 }
 

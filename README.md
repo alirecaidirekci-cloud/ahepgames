@@ -46,7 +46,8 @@ Share the link with your friends. 🎉
 ## Game rules
 
 **Guess the Footballer** (2–6 players)
-- One player (the *picker*) secretly picks one of 500 footballers (search, filters or random).
+- One player (the *picker*) secretly picks one of 600 footballers: the 450 most famous worldwide plus
+  the 150 most famous Turkish players (search, filters or random).
 - The others ask yes/no questions from the built-in pool (nationality, leagues, clubs, position,
   appearance, achievements). Answers are automatic. The grid of possible players shrinks after each answer.
 - 10 questions and 2 guesses in total, split evenly between guessers. Leftovers are *shared*:
@@ -64,6 +65,8 @@ Share the link with your friends. 🎉
 - 20 questions, 2 minutes each. Only the team captain submits; teammates can suggest.
 - Wrong answer or time up → the other team gets 30 seconds to steal the point.
 - A tie after 20 questions goes to sudden-death questions.
+- Each question shows its difficulty. A right answer (or a steal) scores 1 point for easy,
+  2 for medium and 3 for hard questions.
 - Points: 10 × team score for everyone, +50 for the winning team (+25 each on a draw).
 
 ## Updating the footballer list

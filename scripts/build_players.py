@@ -21,7 +21,7 @@ UA = "FriendsGamesBuilder/1.0 (hobby project)"
 RAW = os.path.join(ROOT, "scripts", "raw.json")
 
 GLOBAL_COUNT = 450
-TURKISH_COUNT = 50
+TURKISH_COUNT = 150
 
 
 def get(url):
@@ -141,7 +141,7 @@ Q57775 Q152274 Q213504 Q44473 Q202693 Q165772 Q151025 Q271464 Q44980 Q79983 Q446
 Q484534 Q43304 Q191634 Q235068 Q207457 Q189587 Q144048 Q2428403 Q152107 Q657360 Q380695 Q558820
 Q15401668 Q331968 Q310598 Q367474 Q733494 Q195620 Q61886 Q310607 Q2011456 Q214859 Q76679 Q222924 Q310602 Q311209 Q331957 Q5530861""".split())
 NAME_FIX = {"Q108159340": "Arda Güler", "Q38136": "Marcelo", "Q168740": "Juan Mata",
-            "Q186330": "Rafael Márquez", "Q46741": "Leonardo", "Q222151": "João Moutinho", "Q11557367": "Takuma Asano", "Q22082505": "Marc Cucurella"}
+            "Q186330": "Rafael Márquez", "Q46741": "Leonardo", "Q222151": "João Moutinho", "Q11557367": "Takuma Asano", "Q22082505": "Marc Cucurella", "Q946473": "Umut Bulut"}
 LEAGUE_FIX = {"Q15804": ("Serie A", "Serie A"), "Q82595": ("Bundesliga", "Bundesliga"),
               "Q206073": ("Ukrainian Premier League", "Ukrayna Premier Ligi"),
               "Q255633": ("Saudi Pro League", "Suudi Arabistan Pro Ligi"), "Q60681": ("Qatar Stars League", "Katar Yıldızlar Ligi"),

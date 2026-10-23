@@ -90,6 +90,7 @@ function lobby() {
         )}
       </div>
       <p class="info">${t("poolSelected", { n: fmtNum(poolSize(cats)) })}</p>
+      <p class="hint">${t("diffRule")}</p>
       ${t("triviaLangNote") ? html`<p class="hint">${t("triviaLangNote")}</p>` : nothing}
     </div>
     ${isHost
@@ -147,13 +148,17 @@ function playing() {
   else if (room.phase === "steal") message = t("stealOf", { team: teamName(active) });
   else {
     const l = room.last || {};
-    message = l.team ? (l.stolen ? t("stoleIt", { team: teamName(l.team) }) : t("gotIt", { team: teamName(l.team) })) : t("nobodyGot");
+    const vars = { team: teamName(l.team), n: l.pts || 1 };
+    message = l.team ? (l.stolen ? t("stoleIt", vars) : t("gotIt", vars)) : t("nobodyGot");
   }
 
   return html`${scoreBar()}
     <div class="card question-card team-border-${active}">
       <div class="row spread">
-        <span class="pill">${title} · ${catName(q.cat)}</span>
+        <span class="row">
+          <span class="pill">${title} · ${catName(q.cat)}</span>
+          ${diffBadge(q)}
+        </span>
         ${answering ? html`<span class="timer ${left < 15000 ? "urgent" : ""}">⏱ ${fmtTime(left)}</span>` : nothing}
       </div>
       <p class="question">${q.q}</p>
@@ -174,6 +179,13 @@ function playing() {
       ${answering && onMyTeam ? html`<p class="hint">${t("captainAnswers")} ${t("captain")}: <b>${room.players[room.captains[active]]?.name}</b></p>` : nothing}
       ${room.phase === "reveal" ? html`<p>${t("rightAnswer", { a: q.answers[q.correct] })}</p>` : nothing}
     </div>`;
+}
+
+const DIFF_ICON = { easy: "🟢", medium: "🟡", hard: "🔴" };
+function diffBadge(q) {
+  const d = DIFF_ICON[q.diff] ? q.diff : null;
+  if (!d) return nothing;
+  return html`<span class="pill diff diff-${d}">${DIFF_ICON[d]} ${t("diff_" + d)} · ${t("ptsShort", { n: logic.questionPoints(q) })}</span>`;
 }
 
 // ---------- ended ----------

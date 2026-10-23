@@ -154,6 +154,10 @@ input, select {
 .scorebar { display: flex; justify-content: center; gap: 16px; font-size: 1.35rem; font-weight: 700; margin: 4px 0 14px; }
 .scorebar b { font-size: 1.8rem; }
 .question-card { border-top: 6px solid var(--line); }
+.diff { font-weight: 600; }
+.diff-easy { border-color: var(--yes); }
+.diff-medium { border-color: var(--gold); }
+.diff-hard { border-color: var(--no); }
 .team-border-A { border-top-color: var(--team-a); }
 .team-border-B { border-top-color: var(--team-b); }
 .question { font-size: 1.3rem; font-weight: 600; margin: 14px 0; }

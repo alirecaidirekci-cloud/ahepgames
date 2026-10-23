@@ -6,6 +6,8 @@ export const ANSWER_MS = 120 * 1000;
 export const STEAL_MS = 30 * 1000;
 export const COIN_MS = 3500;
 export const REVEAL_MS = 5000;
+export const DIFFICULTY_POINTS = { easy: 1, medium: 2, hard: 3 };
+export const questionPoints = (q) => DIFFICULTY_POINTS[q?.diff] || 1;
 
 export const other = (team) => (team === "A" ? "B" : "A");
 export const members = (room, team) =>
@@ -39,9 +41,9 @@ function startQuestion(room, idx, now) {
 function reveal(room, now, last) {
   room.phase = "reveal";
   room.deadline = now + REVEAL_MS;
-  room.last = last;
+  room.last = { ...last, pts: questionPoints(room.questions[room.idx]) };
   room.suggest = null;
-  if (last.team) room.scores[last.team] = (room.scores[last.team] || 0) + 1;
+  if (last.team) room.scores[last.team] = (room.scores[last.team] || 0) + room.last.pts;
   return room;
 }
 
