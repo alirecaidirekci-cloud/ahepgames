@@ -146,6 +146,7 @@ function homeView() {
           <div class="game-icon">${g === "footballer" ? "🕵️" : "🧠"}</div>
           <h3>${t(g)}</h3>
           <p>${t(g + "Desc")}</p>
+          <p class="info">${t(g + "Info", GAMES[g].info())}</p>
         </a>`
       )}
     </div>
@@ -178,6 +179,7 @@ function roomListView(game) {
     <a href="#/" class="back">${t("back")}</a>
     <h2>${t(game)}</h2>
     <p class="hint">${t(game + "Desc")}</p>
+    <p class="info">${t(game + "Info", mod.info())}</p>
     <div class="row">
       <button class="primary" @click=${create}>＋ ${t("createRoom")}</button>
       <form class="row" @submit=${(e) => (e.preventDefault(), join(new FormData(e.target).get("code")))}>

@@ -3,6 +3,7 @@
 import { arr } from "../db.js";
 import { questionById } from "./data.js";
 
+export const FOOTBALLER_COUNT = 500; // size of data/players.json
 export const MAX_PLAYERS = 6;
 export const TOTAL_QUESTIONS = 10;
 export const TOTAL_GUESSES = 6;

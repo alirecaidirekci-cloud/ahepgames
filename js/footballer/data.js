@@ -61,7 +61,7 @@ function buildQuestions(data) {
 
   const leagues = Object.keys(data.leagues).sort((a, b) => count((p) => p.leagues.includes(b)) - count((p) => p.leagues.includes(a)));
   for (const l of leagues) {
-    add("league:" + l, "league", () => `Has he played in the ${leagueName(l)}?`, () => `Oynadığı ligler arasında ${leagueName(l)} var mı?`, (p) => p.leagues.includes(l));
+    add("league:" + l, "league", () => `Has he played in ${leagueName(l)}?`, () => `Oynadığı ligler arasında ${leagueName(l)} var mı?`, (p) => p.leagues.includes(l));
   }
 
   const clubCounts = {};

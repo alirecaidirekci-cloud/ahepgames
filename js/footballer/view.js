@@ -11,6 +11,14 @@ export const prepare = () => data.loadData();
 export const reduce = (room, a, me, now) => logic.reduce(room, a, me, now, data);
 export const needsTick = (room, now) => room.status === "playing" && now >= room.deadline;
 export const newRoomFields = (me) => ({ picker: me.key });
+export const info = () => ({
+  players: logic.FOOTBALLER_COUNT,
+  minP: 2,
+  maxP: MAX_PLAYERS,
+  q: logic.TOTAL_QUESTIONS,
+  g: logic.TOTAL_GUESSES,
+  min: logic.ROUND_MS / 60000,
+});
 
 export function onRoom(room, code) {
   if (room?.status === "ended" && !room.scored) {

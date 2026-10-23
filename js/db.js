@@ -5,7 +5,8 @@
 import { firebaseConfig } from "./firebase-config.js";
 
 const FB = "https://www.gstatic.com/firebasejs/10.12.2/";
-export const isLocal = !firebaseConfig.apiKey || firebaseConfig.apiKey === "PASTE_ME";
+// Add ?demo to the URL to force local mode (handy for trying things without touching real data).
+export const isLocal = !firebaseConfig.apiKey || firebaseConfig.apiKey === "PASTE_ME" || new URLSearchParams(location.search).has("demo");
 
 let impl;
 

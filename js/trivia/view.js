@@ -10,6 +10,7 @@ export const MAX_PLAYERS = logic.MAX_PLAYERS;
 export const reduce = logic.reduce;
 export const needsTick = (room, now) => room.status === "playing" && now >= room.deadline;
 export const newRoomFields = () => ({ cats: [9, 21] });
+export const info = () => ({ q: logic.QUESTIONS, cats: CATEGORIES.length, min: logic.ANSWER_MS / 60000, minTeam: 2 });
 
 export function onRoom(room, code) {
   if (room?.status === "ended" && !room.scored) {

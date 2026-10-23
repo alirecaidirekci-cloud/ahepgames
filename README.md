@@ -7,6 +7,14 @@ Users only pick a username (no password); points are stored per user per game.
 - Database: Firebase Realtime Database + Anonymous Auth (free Spark plan)
 - No build step: plain HTML/JS modules
 
+| Guess the Footballer (guesser) | Guess the Footballer (picker) |
+|---|---|
+| ![Guesser view](docs/fb-guesser.png) | ![Picker view](docs/fb-picker.png) |
+| **Team Trivia (answering team)** | **Team Trivia (steal chance)** |
+| ![Trivia answer](docs/tr-answer.png) | ![Trivia steal](docs/tr-steal.png) |
+
+Add `?demo` to the site URL to try it in local demo mode without touching the real database.
+
 ## Try it locally (no setup)
 
 ```bash

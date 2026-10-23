@@ -84,6 +84,8 @@ input, select {
 .game:hover { transform: translateY(-2px); border-color: var(--accent); }
 .game-icon { font-size: 2.4rem; }
 .game p { color: var(--muted); margin: 0; }
+.info { font-size: 0.85rem; font-weight: 600; color: var(--accent); margin: 8px 0 0; }
+.game p.info { color: var(--accent); }
 
 .board { width: 100%; border-collapse: collapse; background: var(--card); border-radius: var(--radius); overflow: hidden; margin: 10px 0; }
 .board th, .board td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); }
@@ -106,8 +108,9 @@ input, select {
 .photo:disabled { opacity: 1; }
 .photo img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; object-position: top; background: var(--line); display: block; }
 .photo span { font-size: 0.75rem; padding: 4px; line-height: 1.2; min-height: 2.4em; }
-.photo.crossed { opacity: 0.4; }
-.photo.crossed::after { content: "✕"; position: absolute; inset: 0; display: grid; place-items: center; font-size: 3rem; color: var(--no); }
+.photo.crossed { opacity: 0.6; }
+.photo.crossed img { filter: grayscale(1) brightness(0.5); }
+.photo.crossed::after { content: "✕"; position: absolute; inset: 0; z-index: 1; text-shadow: 0 0 6px #000; display: grid; place-items: center; font-size: 3rem; color: var(--no); }
 .status-bar { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; font-weight: 600; }
 .timer { font-variant-numeric: tabular-nums; font-size: 1.2rem; }
 .timer.urgent { color: var(--no); }
