@@ -222,8 +222,15 @@ textarea { font: inherit; padding: 9px 12px; border-radius: 10px; border: 1px so
 @media (max-width: 860px) { .auction-layout, .auction-layout.two { grid-template-columns: 1fr; } }
 
 /* welcome mascot on the home page */
-.welcome { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 8px 0 4px; }
-.mascot { height: 170px; width: auto; }
+.welcome-screen {
+  position: fixed; inset: 0; z-index: 30; background: var(--bg); display: grid; place-items: center; padding: 16px;
+  animation: welcome-in 0.4s ease-out; cursor: pointer;
+}
+.welcome-screen.leaving { animation: welcome-out 0.5s ease-in forwards; }
+@keyframes welcome-in { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: none; } }
+@keyframes welcome-out { to { opacity: 0; } }
+.welcome { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.mascot { height: 300px; width: auto; }
 .bubble {
   position: relative; background: var(--card); border: 2px solid var(--accent); border-radius: 18px;
   padding: 14px 20px; font-size: 1.4rem; font-weight: 800; box-shadow: var(--shadow); max-width: 320px;
@@ -232,4 +239,4 @@ textarea { font: inherit; padding: 9px 12px; border-radius: 10px; border: 1px so
   content: ""; position: absolute; left: -14px; top: 50%; transform: translateY(-50%);
   border: 12px solid transparent; border-right-color: var(--accent); border-left: 0;
 }
-@media (max-width: 760px) { .mascot { height: 120px; } .bubble { font-size: 1.1rem; padding: 10px 14px; } }
+@media (max-width: 760px) { .mascot { height: 220px; } .bubble { font-size: 1.2rem; padding: 10px 14px; } }

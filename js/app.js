@@ -91,7 +91,27 @@ async function login(e) {
   state.me = { key, name: r.value.name };
   store.setItem("fg-user", JSON.stringify(state.me));
   state.error = "";
+  showWelcome();
   onRoute();
+}
+
+// Short welcome screen with the mascot right after logging in.
+const WELCOME_MS = 2500;
+function showWelcome() {
+  state.welcome = "in";
+  // Skipped if the player already clicked the screen away.
+  setTimeout(() => state.welcome === "in" && ((state.welcome = "out"), rerender()), WELCOME_MS);
+  setTimeout(() => state.welcome === "out" && ((state.welcome = null), rerender()), WELCOME_MS + 500);
+}
+
+function welcomeScreen() {
+  if (!state.welcome) return nothing;
+  return html`<div class="welcome-screen ${state.welcome === "out" ? "leaving" : ""}" @click=${() => ((state.welcome = null), rerender())}>
+    <div class="welcome">
+      <img class="mascot" src="img/mascot.png" alt="" />
+      <div class="bubble">${t("mascotSays")}</div>
+    </div>
+  </div>`;
 }
 
 function logout() {
@@ -114,7 +134,7 @@ function shell() {
     </header>
     ${isLocal ? html`<div class="banner">${t("localMode")}</div>` : nothing}
     <main>${body()}</main>
-    ${confirmDialog()}
+    ${confirmDialog()} ${welcomeScreen()}
   `;
 }
 
@@ -151,10 +171,6 @@ function homeView() {
   });
   rows.sort((a, b) => b.total - a.total);
   return html`
-    <div class="welcome">
-      <img class="mascot" src="img/mascot.png" alt="" />
-      <div class="bubble">${t("mascotSays")}</div>
-    </div>
     ${GAME_GROUPS.map(
       ([title, keys]) => html`<h2>${t(title)}</h2>
         <div class="games games-${keys.length}">
