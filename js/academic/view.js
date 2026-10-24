@@ -6,6 +6,7 @@ import { html, nothing, fmtTime, fmtNum, roomPlayers, awardOnce, arr } from "../
 import { isAdmin } from "../admins.js";
 import * as logic from "./logic.js";
 import { SUBJECTS, subjectName, loadAll, loadBuiltIn, countBySubject, buildQueues, localized } from "./bank.js";
+import { teamLabel, renameField, autoStart, tournamentLobby, backLink } from "../tournament/match.js";
 
 export const MAX_PLAYERS = logic.MAX_PLAYERS;
 export const icon = "🎓";
@@ -32,7 +33,15 @@ export function onRoom(room, code) {
 
 export const lobbyExtra = () => html`<p><a href="#/academic/bank">📚 ${t("bankLink")}</a></p>`;
 
-const teamName = (team) => t(team === "A" ? "teamA" : "teamB");
+const teamName = (team) => teamLabel(state.room, team);
+
+// Picks each team's questions from its own subjects and starts (10 per match in tournaments).
+async function startGame(room) {
+  bank = await loadAll();
+  const subjects = { A: arr(room.subjects?.A), B: arr(room.subjects?.B) };
+  const queues = buildQueues(bank, subjects, logic.perTeam(room));
+  if (!(await act({ type: "begin", queues }))) throw new Error("not started");
+}
 
 export function view() {
   const room = state.room;
@@ -44,6 +53,10 @@ export function view() {
 
 function lobby() {
   const room = state.room;
+  if (room.tournament) {
+    autoStart(room, () => startGame(room));
+    return tournamentLobby(room);
+  }
   const me = state.me.key;
   const isHost = room.host === me;
   const ps = roomPlayers(room);
@@ -54,9 +67,7 @@ function lobby() {
   const begin = async () => {
     setUi({ loading: true, loadError: false });
     try {
-      bank = await loadAll();
-      const queues = buildQueues(bank, { A: subjectsOf("A"), B: subjectsOf("B") }, logic.PER_TEAM);
-      if (!(await act({ type: "begin", queues }))) throw new Error("not started");
+      await startGame(room);
       setUi({ loading: false });
     } catch {
       setUi({ loading: false, loadError: true });
@@ -74,6 +85,7 @@ function lobby() {
           <ul class="players">
             ${m.map((p) => html`<li>${p.name} ${p.key === me ? html`<small>(${t("you")})</small>` : nothing}</li>`)}
           </ul>
+          ${renameField(room, team)}
           ${mine || !room.players[me] ? nothing : html`<button @click=${() => act({ type: "setTeam", team })}>${t("joinTeam")}</button>`}
           <h4>${t("teamSubjects", { n: chosen.length, min: logic.MIN_SUBJECTS })}</h4>
           <div class="chips">
@@ -135,7 +147,8 @@ function playing() {
   const voters = {};
   if (votes) for (const [k, c] of Object.entries(votes.current)) (voters[c] = voters[c] || []).push(room.players[k]?.name);
   const n = room.idx + 1;
-  const title = n > logic.QUESTIONS ? t("suddenDeath", { i: n - logic.QUESTIONS }) : t("question", { i: n, n: logic.QUESTIONS });
+  const total = room.qCount || logic.QUESTIONS;
+  const title = n > total ? t("suddenDeath", { i: n - total }) : t("question", { i: n, n: total });
 
   let message;
   if (room.phase === "answer") message = onMyTeam ? t("turnOf", { team: teamName(active) }) : t("waitTeam", { team: teamName(active) });
@@ -207,7 +220,7 @@ function ended() {
           </tr>`
         )}
       </table>
-      <a class="button primary" href="#/academic">${t("playAgain")}</a>
+      ${backLink(room, "academic")}
     </div>`;
 }
 

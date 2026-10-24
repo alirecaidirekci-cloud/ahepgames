@@ -44,6 +44,21 @@ everything is stored in this browser, and each tab can log in as a different pla
 
 Share the link with your friends. 🎉
 
+## Tournaments (Turnuvalar)
+For Team Trivia and Academic Quiz (`#/tournaments`).
+- Anyone can organize one: name, game, date and start time, max. teams (4/8/16), subjects (Team Trivia).
+- Teams register with a name and 2–4 players (Academic Quiz: at least 3 departments); added players
+  confirm their spot; the organizer approves or rejects teams. Registration is open until the start.
+- At the start time the knockout bracket is drawn (byes if the number of teams is not a power of 2)
+  and match rooms open by themselves; players get an invite pop-up. Matches have 10 questions, the
+  final 20. A match starts when everyone is in, or after 3 minutes with 2+ players per team; a team with
+  fewer than 2 players after 10 minutes loses by walkover.
+- Medals for every team member: 🥇 champions, 🥈 finalists, 🥉 both losing semi-finalists, shown in a
+  separate medal table (home page and tournaments page). Normal match points still count.
+- There is no server: every open browser moves tournaments along, so at least one participant should
+  have the site open at the start time.
+- In normal Team Trivia and Academic Quiz rooms, team members can also rename their team.
+
 ## Online players & invites
 The home page lists who is online right now and where they are. Inside a room the host has an
 **Invite players / Oyuncu davet et** panel: online players get a pop-up and join with one tap

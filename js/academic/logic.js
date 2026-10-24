@@ -8,6 +8,7 @@ import * as trivia from "../trivia/logic.js";
 export const MAX_PLAYERS = 12;
 export const QUESTIONS = trivia.QUESTIONS;
 export const PER_TEAM = (trivia.QUESTIONS + trivia.EXTRA_QUESTIONS) / 2;
+export const perTeam = (room) => (trivia.qCount(room) + trivia.EXTRA_QUESTIONS) / 2;
 export const MIN_SUBJECTS = 3;
 export const OPTIONS = 4;
 export const { members, activeTeam, questionPoints, firstTeam } = trivia;
@@ -35,27 +36,27 @@ export function tally(room) {
 
 export function reduce(room, a, me, now) {
   if (!room) return undefined;
-  const isHost = room.host === me;
+  if (a.type === "setTeamName" || a.type === "claimStart") return trivia.sharedLobbyAction(room, a, me, now);
   const myTeam = room.players?.[me]?.team;
   const lobby = room.status === "lobby";
   const playing = room.status === "playing";
   switch (a.type) {
     case "setTeam":
-      if (!lobby || !room.players?.[me] || !["A", "B"].includes(a.team)) return undefined;
+      if (!lobby || room.tournament || !room.players?.[me] || !["A", "B"].includes(a.team)) return undefined;
       room.players[me].team = a.team;
       return room;
     case "toggleSubject": {
-      if (!lobby || !myTeam) return undefined;
+      if (!lobby || room.tournament || !myTeam) return undefined;
       const list = arr(room.subjects?.[myTeam]);
       room.subjects = { ...(room.subjects || {}), [myTeam]: list.includes(a.subject) ? list.filter((s) => s !== a.subject) : [...list, a.subject] };
       return room;
     }
     case "begin": {
-      if (!lobby || !isHost) return undefined;
+      if (!lobby || !trivia.canBegin(room, me)) return undefined;
       if (members(room, "A").length < 2 || members(room, "B").length < 2) return undefined;
       if (Object.values(room.players).some((p) => !p.team)) return undefined;
       if (["A", "B"].some((t) => arr(room.subjects?.[t]).length < MIN_SUBJECTS)) return undefined;
-      if (["A", "B"].some((t) => arr(a.queues?.[t]).length < QUESTIONS / 2)) return undefined;
+      if (["A", "B"].some((t) => arr(a.queues?.[t]).length < trivia.qCount(room) / 2)) return undefined;
       room.coin = Math.random() < 0.5 ? "A" : "B";
       // Question idx goes to the team whose turn it is, from that team's own queue.
       const len = Math.min(arr(a.queues.A).length, arr(a.queues.B).length) * 2;

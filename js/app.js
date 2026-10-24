@@ -7,12 +7,14 @@ import * as trivia from "./trivia/view.js";
 import * as academic from "./academic/view.js";
 import * as teamnation from "./teamnation/view.js";
 import * as auction from "./auction/view.js";
+import * as tournamentView from "./tournament/view.js";
+import * as tournamentLogic from "./tournament/logic.js";
 
 const GAMES = { footballer, trivia, academic, teamnation, auction };
 
 // Set by scripts/release.py. If version.json on the server is newer, this browser still runs
 // cached old files: re-download them and reload once.
-export const APP_VERSION = "20261024-133542";
+export const APP_VERSION = "20261024-151942";
 async function updateIfNeeded() {
   try {
     const info = await (await fetch("version.json", { cache: "no-store" })).json();
@@ -43,6 +45,7 @@ export const state = {
   ui: {}, // per-screen UI state (filters, dialogs, ...)
   users: {}, // everyone's name + last activity (for the online list and invites)
   invite: null, // an invitation to a room for me
+  tournaments: null, // all tournaments (watched while logged in)
   error: "",
 };
 
@@ -87,6 +90,8 @@ function heartbeat() {
   db.update(`users/${state.me.key}`, { name: state.me.name, lastActive: db.now(), where: state.route.slice(0, 2).join("/") });
 }
 setInterval(heartbeat, 30 * 1000);
+// No server: every logged-in browser helps move tournaments along (start, open matches, results).
+setInterval(() => state.me && tournamentLogic.runDue(), 8 * 1000);
 window.addEventListener("pagehide", () => state.me && db.update(`users/${state.me.key}`, { lastActive: 0 }));
 
 let presenceOff = [];
@@ -95,6 +100,7 @@ function watchPresence() {
   presenceOff = [];
   if (!state.me) return;
   presenceOff.push(db.on("users", (u) => ((state.users = u || {}), rerender())));
+  presenceOff.push(db.on("tournaments", (v) => ((state.tournaments = v || {}), rerender())));
   presenceOff.push(
     db.on(`users/${state.me.key}/invite`, (inv) => {
       state.invite = inv && db.now() - inv.t < INVITE_MS ? inv : null;
@@ -209,13 +215,18 @@ async function onRoute() {
   if (!game) {
     updateIfNeeded();
     unsub.push(db.on("scores", (s) => ((state.leaderboard = s || {}), rerender())));
+    unsub.push(tournamentView.watchMedals());
     cleanupRooms(Object.keys(GAMES));
+  } else if (game === "tournaments") {
+    unsub.push(...tournamentView.enter(state.route));
   } else if (GAMES[game]?.pages?.[code]) {
     unsub.push(...(GAMES[game].pages[code].enter?.() || []));
   } else if (GAMES[game] && !code) {
     unsub.push(watchRooms(game, (list) => ((state.rooms = list), rerender())));
   } else if (GAMES[game] && code) {
     await GAMES[game].prepare?.();
+    // Opening the room an invite points to uses up that invite.
+    if (state.invite?.game === game && state.invite?.code === code) db.set(`users/${state.me.key}/invite`, null);
     let registered = false;
     let seen = false;
     unsub.push(
@@ -231,7 +242,9 @@ async function onRoute() {
         seen = seen || !!room;
         if (room && !registered && isSpectator(room, state.me.key) && !room.spectators?.[state.me.key]) {
           registered = true;
-          spectateRoom(game, code, state.me);
+          const inRoster = room.roster && ["A", "B"].some((tm) => (room.roster[tm] || []).includes(state.me.key));
+          if (inRoster && room.status === "lobby") joinRoom(game, code, state.me, GAMES[game].MAX_PLAYERS);
+          else spectateRoom(game, code, state.me);
         }
         state.room = room;
         if (!room) state.error = t("roomNotFound");
@@ -306,6 +319,7 @@ function body() {
   if (!state.me) return loginView();
   const [game, code] = state.route;
   if (!game) return homeView();
+  if (game === "tournaments") return tournamentView.view(state.route);
   if (!GAMES[game]) return html`<p>404 · <a href="#/">${t("back")}</a></p>`;
   if (!code) return roomListView(game);
   if (GAMES[game].pages?.[code]) return GAMES[game].pages[code].view();
@@ -335,9 +349,10 @@ function homeView() {
   });
   rows.sort((a, b) => b.total - a.total);
   return html`
+    ${tournamentView.homeNotices()}
     ${GAME_GROUPS.map(
       ([title, keys]) => html`<h2>${t(title)}</h2>
-        <div class="games games-${keys.length}">
+        <div class="games games-${title === "quizGames" ? keys.length + 1 : keys.length}">
           ${keys.map(
             (g) => html`<a class="card game" href="#/${g}">
               <div class="game-icon">${GAMES[g].icon}</div>
@@ -346,6 +361,7 @@ function homeView() {
               <p class="info">${t(g + "Info", GAMES[g].info())}</p>
             </a>`
           )}
+          ${title === "quizGames" ? tournamentView.homeCard() : nothing}
         </div>`
     )}
     ${onlineSection()}
@@ -362,6 +378,8 @@ function homeView() {
           </tbody>
         </table>`
       : html`<p class="hint">${t("noScores")}</p>`}
+    <h2>🏅 ${t("medalTable")}</h2>
+    ${tournamentView.medalTable()}
   `;
 }
 
@@ -401,7 +419,7 @@ function roomListView(game) {
             const ps = roomPlayers(r);
             const open = r.status === "lobby" && ps.length < mod.MAX_PLAYERS;
             return html`<div class="card room-item">
-              <b>${r.code}</b><span>${ps.map((p) => p.name).join(", ")}</span>
+              <b>${r.tournament ? "🏆 " : ""}${r.code}</b><span>${ps.map((p) => p.name).join(", ")}</span>
               <span class="pill">${r.status === "lobby" ? t("statusWaiting") : t("statusPlaying")} · ${ps.length}/${mod.MAX_PLAYERS}</span>
               ${open ? html`<button class="small primary" @click=${() => join(r.code)}>${t("join")}</button>` : nothing}
               <button class="small" @click=${() => watch(r.code)}>👀 ${t("watch")}</button>
@@ -426,13 +444,13 @@ export function roomHeader(game) {
       <a href="#/${game}" class="back" @click=${(e) => (e.preventDefault(), leave())}>${t("back")}</a>
       <span class="row">
         <span>${t(game)} · ${t("room")} <b class="code">${room.code}</b></span>
-        ${room.host === state.me.key ? html`<button class="small" @click=${close}>🚪 ${t("closeRoom")}</button>` : nothing}
+        ${room.host === state.me.key && !room.tournament ? html`<button class="small" @click=${close}>🚪 ${t("closeRoom")}</button>` : nothing}
       </span>
     </div>
     ${isSpectator(room, state.me.key)
       ? html`<p class="watch-note">
           👀 ${t("youWatch")}
-          ${room.status === "lobby"
+          ${room.status === "lobby" && (!room.roster || ["A", "B"].some((tm) => (room.roster[tm] || []).includes(state.me.key)))
             ? html`<button class="small primary" @click=${async () => {
                 const res = await joinRoom(game, room.code, state.me, GAMES[game].MAX_PLAYERS, GAMES[game].joinFields?.() || {});
                 if (res !== "ok") ((state.error = t(res === "full" ? "roomFull" : "roomNotFound")), rerender());
@@ -442,7 +460,7 @@ export function roomHeader(game) {
       : nothing}
     ${watchers.length ? html`<p class="hint">👀 ${t("watchers", { names: watchers.join(", ") })}</p>` : nothing}
     ${state.error ? html`<p class="error">${state.error}</p>` : nothing}
-    ${room.host === state.me.key && room.status !== "ended" ? invitePanel(room, game) : nothing}`;
+    ${room.host === state.me.key && room.status !== "ended" && !room.tournament ? invitePanel(room, game) : nothing}`;
 }
 
 // Confirmation dialog: setUi({confirm: {text, yes: fn}})

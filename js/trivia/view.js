@@ -5,6 +5,7 @@ import { t, getLang } from "../i18n.js";
 import { html, nothing, fmtTime, fmtNum, roomPlayers, awardOnce } from "../lib.js";
 import * as logic from "./logic.js";
 import { CATEGORIES, loadQuestions, poolSize, addTurkish } from "./questions.js";
+import { teamLabel, renameField, autoStart, tournamentLobby, backLink } from "../tournament/match.js";
 
 export const MAX_PLAYERS = logic.MAX_PLAYERS;
 export const icon = "🧠";
@@ -23,7 +24,15 @@ export function onRoom(room, code) {
   }
 }
 
-const teamName = (team) => t(team === "A" ? "teamA" : "teamB");
+const teamName = (team) => teamLabel(state.room, team);
+
+// Loads the questions (count depends on the room: 20, or 10 in tournament matches) and starts.
+async function startGame(room) {
+  const total = logic.qCount(room);
+  const questions = await loadQuestions(room.cats || [9], total + logic.EXTRA_QUESTIONS);
+  if (questions.length < total) throw new Error("not enough");
+  return act({ type: "begin", questions });
+}
 // Question in the viewer's language; Turkish players also see the original answer when it differs.
 // If the room's questions came without Turkish (started by an older version, or translation failed
 // for the host), this browser translates the current question itself.
@@ -58,6 +67,10 @@ export function view() {
 
 function lobby() {
   const room = state.room;
+  if (room.tournament) {
+    autoStart(room, () => startGame(room));
+    return tournamentLobby(room);
+  }
   const me = state.me.key;
   const isHost = room.host === me;
   const ps = roomPlayers(room);
@@ -66,9 +79,7 @@ function lobby() {
   const begin = async () => {
     setUi({ loading: true, loadError: false });
     try {
-      const questions = await loadQuestions(cats, logic.QUESTIONS + logic.EXTRA_QUESTIONS);
-      if (questions.length < logic.QUESTIONS) throw new Error("not enough");
-      await act({ type: "begin", questions });
+      await startGame(room);
       setUi({ loading: false });
     } catch {
       setUi({ loading: false, loadError: true });
@@ -91,6 +102,7 @@ function lobby() {
               </li>`
             )}
           </ul>
+          ${renameField(room, team)}
           ${mine
             ? room.captains?.[team] !== me
               ? html`<button class="small" @click=${() => act({ type: "beCaptain" })}>${t("beCaptain")}</button>`
@@ -158,7 +170,8 @@ function playing() {
   const suggestions = {};
   for (const [k, c] of Object.entries(room.suggest || {})) (suggestions[c] = suggestions[c] || []).push(room.players[k]?.name);
   const n = room.idx + 1;
-  const title = n > logic.QUESTIONS ? t("suddenDeath", { i: n - logic.QUESTIONS }) : t("question", { i: n, n: logic.QUESTIONS });
+  const total = logic.qCount(room);
+  const title = n > total ? t("suddenDeath", { i: n - total }) : t("question", { i: n, n: total });
 
   const click = (i) => {
     if (!answering || !onMyTeam) return;
@@ -228,6 +241,6 @@ function ended() {
           </tr>`
         )}
       </table>
-      <a class="button primary" href="#/trivia">${t("playAgain")}</a>
+      ${backLink(room, "trivia")}
     </div>`;
 }

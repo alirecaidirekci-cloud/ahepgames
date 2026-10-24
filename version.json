@@ -1,5 +1,5 @@
 {
- "v": "20261024-133542",
+ "v": "20261024-151942",
  "files": [
   "css/style.css",
   "data/academic/business.json",
@@ -29,6 +29,9 @@
   "js/lib.js",
   "js/teamnation/logic.js",
   "js/teamnation/view.js",
+  "js/tournament/logic.js",
+  "js/tournament/match.js",
+  "js/tournament/view.js",
   "js/trivia/logic.js",
   "js/trivia/questions.js",
   "js/trivia/view.js"

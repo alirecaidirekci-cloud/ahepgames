@@ -80,6 +80,15 @@ export async function joinRoom(game, code, me, maxPlayers, extraFields = {}) {
       result = "full";
       return undefined;
     }
+    // Tournament match: only the two registered teams can play, each in their own team.
+    if (room.roster) {
+      const team = ["A", "B"].find((tm) => arr(room.roster[tm]).includes(me.key));
+      if (!team) {
+        result = "full";
+        return undefined;
+      }
+      extraFields = { ...extraFields, team };
+    }
     result = "ok";
     room.players = { ...(room.players || {}), [me.key]: { name: me.name, t: db.now(), ...extraFields } };
     if (room.spectators) delete room.spectators[me.key];

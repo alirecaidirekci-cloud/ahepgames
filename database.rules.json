@@ -28,6 +28,14 @@
         "$q": { ".write": "auth != null" }
       }
     },
+    "tournaments": {
+      ".read": "auth != null",
+      "$t": { ".write": "auth != null" }
+    },
+    "medals": {
+      ".read": "auth != null",
+      "$user": { ".write": "auth != null" }
+    },
     "rooms": {
       "$game": {
         ".read": "auth != null",

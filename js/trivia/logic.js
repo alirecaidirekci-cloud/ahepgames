@@ -9,6 +9,10 @@ export const REVEAL_MS = 5000;
 export const DIFFICULTY_POINTS = { easy: 1, medium: 2, hard: 3 };
 export const questionPoints = (q) => DIFFICULTY_POINTS[q?.diff] || 1;
 
+// Normal games have 20 questions; tournament matches set room.qCount (10, or 20 in the final).
+export const qCount = (room) => room.qCount || QUESTIONS;
+export const TEAM_NAME_MAX = 20;
+
 export const other = (team) => (team === "A" ? "B" : "A");
 export const members = (room, team) =>
   Object.entries(room.players || {})
@@ -52,7 +56,7 @@ function reveal(room, now, last) {
 export function next(room, now) {
   const done = room.idx + 1;
   const { A, B } = room.scores;
-  if ((done >= QUESTIONS && A !== B) || done >= room.questions.length) return finish(room, now);
+  if ((done >= qCount(room) && A !== B) || done >= room.questions.length) return finish(room, now);
   return startQuestion(room, done, now);
 }
 
@@ -87,31 +91,58 @@ export function submitAnswer(room, choice, now) {
   return reveal(room, now, { team: null, choice });
 }
 
+// Lobby actions shared by both quiz games:
+//  - setTeamName: a team member renames their team (not in tournament matches; names come from the tournament)
+//  - claimStart: in a tournament match nobody is host, so one present player claims the start,
+//    loads the questions and sends "begin" (the claim expires after a minute if that fails)
+export function sharedLobbyAction(room, a, me, now) {
+  const myTeam = room.players?.[me]?.team;
+  if (room.status !== "lobby") return undefined;
+  if (a.type === "setTeamName") {
+    const name = String(a.name || "").trim().slice(0, TEAM_NAME_MAX);
+    if (room.tournament || !myTeam) return undefined;
+    room.teamNames = { ...(room.teamNames || {}), [myTeam]: name || null };
+    return room;
+  }
+  if (a.type === "claimStart") {
+    if (!room.tournament || !room.players?.[me]) return undefined;
+    if (room.starter && room.starter !== me && now - (room.starterAt || 0) < 60 * 1000) return undefined;
+    room.starter = me;
+    room.starterAt = now;
+    return room;
+  }
+  return undefined;
+}
+
+// Who may send "begin": the host, or in a tournament match the player who claimed the start.
+export const canBegin = (room, me) => (room.tournament ? room.starter === me : room.host === me);
+
 export function reduce(room, a, me, now) {
   if (!room) return undefined;
+  if (a.type === "setTeamName" || a.type === "claimStart") return sharedLobbyAction(room, a, me, now);
   const isHost = room.host === me;
   const myTeam = room.players?.[me]?.team;
   const lobby = room.status === "lobby";
   const playing = room.status === "playing";
   switch (a.type) {
     case "setTeam":
-      if (!lobby || !room.players?.[me] || !["A", "B"].includes(a.team)) return undefined;
+      if (!lobby || room.tournament || !room.players?.[me] || !["A", "B"].includes(a.team)) return undefined;
       room.players[me].team = a.team;
       fixCaptains(room);
       return room;
     case "beCaptain":
-      if (!lobby || !myTeam) return undefined;
+      if (!lobby || room.tournament || !myTeam) return undefined;
       room.captains = { ...(room.captains || {}), [myTeam]: me };
       return room;
     case "setCats":
-      if (!lobby || !isHost) return undefined;
+      if (!lobby || room.tournament || !isHost) return undefined;
       room.cats = a.cats;
       return room;
     case "begin": {
-      if (!lobby || !isHost) return undefined;
+      if (!lobby || !canBegin(room, me)) return undefined;
       if (members(room, "A").length < 2 || members(room, "B").length < 2) return undefined;
       if (Object.values(room.players).some((p) => !p.team)) return undefined;
-      if (!a.questions || a.questions.length < QUESTIONS) return undefined;
+      if (!a.questions || a.questions.length < qCount(room)) return undefined;
       fixCaptains(room);
       room.questions = a.questions;
       room.status = "playing";
