@@ -347,3 +347,5 @@ textarea { font: inherit; padding: 9px 12px; border-radius: 10px; border: 1px so
 .rename-team { margin-bottom: 8px; }
 .rename-team input { flex: 1; min-width: 0; }
 .games-3 .game, .games-2 .game { min-width: 0; }
+
+.admin-matches { max-height: 220px; overflow-y: auto; }

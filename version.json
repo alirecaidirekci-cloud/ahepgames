@@ -1,5 +1,5 @@
 {
- "v": "20261024-152834",
+ "v": "20261024-160941",
  "files": [
   "css/style.css",
   "data/academic/business.json",
@@ -10,6 +10,7 @@
   "data/academic/tourism.json",
   "data/academic/trade.json",
   "data/players.json",
+  "data/pool.json",
   "img/logo.png",
   "img/mascot.png",
   "index.html",
@@ -28,6 +29,7 @@
   "js/i18n.js",
   "js/lib.js",
   "js/teamnation/logic.js",
+  "js/teamnation/pool.js",
   "js/teamnation/view.js",
   "js/tournament/logic.js",
   "js/tournament/match.js",

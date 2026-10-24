@@ -3,13 +3,13 @@ import { state, act, setUi, roomHeader } from "../app.js";
 import { db } from "../db.js";
 import { t } from "../i18n.js";
 import { html, nothing, arr, fmtTime, roomPlayers, awardOnce } from "../lib.js";
-import * as data from "../footballer/data.js";
+import * as pool from "./pool.js";
 import * as logic from "./logic.js";
 
 export const MAX_PLAYERS = logic.MAX_PLAYERS;
 export const icon = "🌍";
 export const reduce = logic.reduce;
-export const prepare = () => data.loadData();
+export const prepare = () => pool.loadPool();
 export const needsTick = (room, now) => room.status === "playing" && room.deadline && now >= room.deadline;
 export const newRoomFields = (me) => ({ roles: { [me.key]: "admin" } });
 export const info = () => ({ win: logic.WIN_SCORE, sec: logic.GUESS_MS / 1000, pts: logic.WIN_POINTS });
@@ -25,13 +25,11 @@ export function onRoom(room, code) {
 }
 
 const nameOf = (key) => state.room.players?.[key]?.name || key;
-const pickName = (p) => (p.kind === "club" ? data.clubName(p.id) : data.countryName(p.id));
+const pickName = (p) => (p.kind === "club" ? pool.clubName(p.id) : pool.countryName(p.id));
 const pickIcon = (p) => (p.kind === "club" ? "🏟️" : "🌍");
 
-// Players in our database who fit both picks.
-function matches(picks) {
-  return data.players().filter((pl) => picks.every((p) => (p.kind === "club" ? pl.clubs.includes(p.id) : pl.nat === p.id)));
-}
+// Players in our large pool who fit both picks (most famous first).
+const matches = (picks) => pool.matches(picks);
 
 export function view() {
   const room = state.room;
@@ -144,18 +142,12 @@ function pickPhase() {
   // Leave this round's hidden pick in the list so its absence doesn't give it away.
   const used = { ...(room.used || {}) };
   for (const p of picks) delete used[p.id];
-  const all = data.players();
-  const count = {};
-  for (const p of all) {
-    for (const c of p.clubs) count[c] = (count[c] || 0) + 1;
-    count[p.nat] = (count[p.nat] || 0) + 1;
-  }
-  const ids = kind === "club" ? Object.keys(data.clubs()) : Object.keys(data.countries());
+  const ids = kind === "club" ? pool.clubIds() : pool.countryIds();
   const options = ids
     .filter((id) => !used[id])
-    .map((id) => ({ id, name: kind === "club" ? data.clubName(id) : data.countryName(id) }))
+    .map((id) => ({ id, name: kind === "club" ? pool.clubName(id) : pool.countryName(id) }))
     .filter((o) => !q || o.name.toLocaleLowerCase().includes(q))
-    .sort((a, b) => (count[b.id] || 0) - (count[a.id] || 0))
+    .sort((a, b) => pool.popularity(b.id) - pool.popularity(a.id))
     .slice(0, 40);
   const choose = (o) =>
     setUi({
@@ -197,8 +189,14 @@ function guessPhase(isAdmin) {
     <div class="admin-box">
       <h4>⚖️ ${t("adminPanel")}</h4>
       <p class="hint">${found.length ? t("dbMatches", { n: found.length }) : t("noDbMatch")}</p>
-      <div class="chips">
-        ${found.slice(0, 60).map(
+      ${found.length > 12
+        ? html`<input placeholder=${t("checkName")} .value=${state.ui.adminQ || ""} @input=${(e) => setUi({ adminQ: e.target.value })} />`
+        : nothing}
+      <div class="chips admin-matches">
+        ${found
+          .filter((p) => !state.ui.adminQ || p.name.toLocaleLowerCase("tr").includes(state.ui.adminQ.toLocaleLowerCase("tr")))
+          .slice(0, 80)
+          .map(
           (p) => html`<button class=${chosen === p.name ? "chip on" : "chip"} @click=${() => setUi({ answer: chosen === p.name ? null : p.name })}>${p.name}</button>`
         )}
       </div>

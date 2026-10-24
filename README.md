@@ -79,8 +79,8 @@ ends, after 45 minutes without any action, or after 6 hours at most.
 ## Game rules
 
 **Guess the Footballer** (2–6 players)
-- One player (the *picker*) secretly picks one of 600 footballers: the 450 most famous worldwide plus
-  the 150 most famous Turkish players (search, filters or random).
+- One player (the *picker*) secretly picks one of 675 footballers: the 450 most famous worldwide, the
+  150 most famous Turkish players and 75 famous foreign players from the Süper Lig (Alex, Muslera, Hagi…).
 - The others ask yes/no questions from the built-in pool (nationality, leagues, clubs, position,
   appearance, achievements). Answers are automatic. The grid of possible players shrinks after each answer.
 - 10 questions and 2 guesses in total, split evenly between guessers. Leftovers are *shared*:
@@ -139,7 +139,8 @@ Appearance tags (hair, beard, skin tone), World Cup winners and missing position
 - Picks stay hidden until both players have chosen (the second player only sees whether the first
   pick is a club or a nation), then both are revealed together.
 - Players say out loud a footballer who fits both picks. The game admin sees the matching players
-  from our database (correct players outside it also count) and clicks who said it first.
+  from a large pool of ~4,900 footballers (`data/pool.json`, built by `scripts/build_pool.py`) with a
+  search box; correct players outside it also count. The admin clicks who said it first.
 - 60 seconds per round; the admin can also end a round with "No valid player". First to 3 wins (+100 pts).
 
 **Transfer Auction / Transfer Açık Artırması** (2 players, no points)

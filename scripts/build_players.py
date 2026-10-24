@@ -2,6 +2,8 @@
 
 Usage:
   py scripts/build_players.py fetch   # download raw data -> scripts/raw.json
+  py scripts/build_players.py addsl   # add foreign Süper Lig stars (needs scripts/pool_raw.json
+                                      # from build_pool.py fetch) -> raw.json
   py scripts/build_players.py build   # raw.json + appearance.txt -> data/players.json
 
 Picks the most famous footballers worldwide (by number of Wikipedia language
@@ -22,6 +24,7 @@ RAW = os.path.join(ROOT, "scripts", "raw.json")
 
 GLOBAL_COUNT = 450
 TURKISH_COUNT = 150
+FOREIGN_SUPERLIG_COUNT = 75  # famous non-Turkish players who played in the Süper Lig
 
 
 def get(url):
@@ -141,7 +144,7 @@ Q57775 Q152274 Q213504 Q44473 Q202693 Q165772 Q151025 Q271464 Q44980 Q79983 Q446
 Q484534 Q43304 Q191634 Q235068 Q207457 Q189587 Q144048 Q2428403 Q152107 Q657360 Q380695 Q558820
 Q15401668 Q331968 Q310598 Q367474 Q733494 Q195620 Q61886 Q310607 Q2011456 Q214859 Q76679 Q222924 Q310602 Q311209 Q331957 Q5530861""".split())
 NAME_FIX = {"Q108159340": "Arda Güler", "Q38136": "Marcelo", "Q168740": "Juan Mata",
-            "Q186330": "Rafael Márquez", "Q46741": "Leonardo", "Q222151": "João Moutinho", "Q11557367": "Takuma Asano", "Q22082505": "Marc Cucurella", "Q946473": "Umut Bulut"}
+            "Q186330": "Rafael Márquez", "Q46741": "Leonardo", "Q222151": "João Moutinho", "Q11557367": "Takuma Asano", "Q22082505": "Marc Cucurella", "Q946473": "Umut Bulut", "Q19116103": "André Onana"}
 LEAGUE_FIX = {"Q15804": ("Serie A", "Serie A"), "Q82595": ("Bundesliga", "Bundesliga"),
               "Q206073": ("Ukrainian Premier League", "Ukrayna Premier Ligi"),
               "Q255633": ("Saudi Pro League", "Suudi Arabistan Pro Ligi"), "Q60681": ("Qatar Stars League", "Katar Yıldızlar Ligi"),
@@ -154,7 +157,7 @@ NAT_FIX = {"Q294806": "Q29", "Q4457": "Q183", "Q44458": "Q183", "Q152871": "Q183
            "Q44464": "Q183", "Q57079": "Q183", "Q43744": "Q183", "Q163564": "Q403", "Q181921": "Q403",
            "Q189217": "Q224", "Q171295": "Q213", "Q22007007": "Q43", "Q315309": "Q43", "Q279436": "Q43",
            "Q3191617": "Q43", "Q115453": "Q224", "Q327456": "Q1028", "Q191885": "Q38", "Q459707": "Q29",
-           "Q151034": "Q117", "Q30007142": "Q21", "Q7085": "Q35"}
+           "Q151034": "Q117", "Q30007142": "Q21", "Q7085": "Q35", "Q204059": "Q403"}
 
 
 # Leagues that questions are asked about (top divisions people know).
@@ -193,7 +196,8 @@ Q59306386 Q252190 Q1894 Q58377 Q44297797 Q29516 Q61780902 Q174486 Q188241 Q66743
 Q246417 Q16499882 Q5981954 Q30148558 Q30055335 Q42728914 Q62050484 Q179773 Q16148978 Q26704703 Q28531111
 Q28861547 Q1913 Q12984 Q47950 Q6413296 Q16056053 Q104414736 Q22007007 Q19613570 Q97725322 Q313145 Q107352615
 Q61655 Q2505360 Q787409 Q60836 Q15613741 Q109282705 Q202237 Q187125 Q186691 Q2091463 Q368441 Q311872 Q168740
-Q19518278 Q43913 Q10524 Q352815 Q487459""".split())
+Q19518278 Q43913 Q10524 Q352815 Q487459 Q184218 Q516921 Q208025 Q175303 Q295637 Q1923 Q795451
+Q20744140 Q15044053 Q401418 Q6509762""".split())
 
 
 def by_rank(ent, prop):
@@ -309,6 +313,16 @@ def build(list_only=False):
         if p:
             chosen.append(p)
             tur_added += 1
+    have = {p["id"] for p in chosen}
+    fsl_added = 0
+    for pid in raw.get("fsl", []):
+        if pid in have or fsl_added >= FOREIGN_SUPERLIG_COUNT:
+            continue
+        p = convert(pid)
+        if p and p["nat"] != "Q43":
+            chosen.append(p)
+            have.add(pid)
+            fsl_added += 1
     if list_only:
         for p in chosen:
             print("%s|%s|%s|%s" % (p["id"], p["name"], lab(L.get(p["nat"], {}), "en"), p["born"]))
@@ -342,6 +356,59 @@ def build(list_only=False):
     print("players", len(out_players), "turkish added", tur_added, "missing appearance", len(missing))
     print("leagues", len(dict_["leagues"]), "countries", len(dict_["countries"]), "clubs", len(dict_["clubs"]))
 
+
+# Legends of the Turkish league who must be in, whatever their worldwide fame.
+MUST_SUPERLIG = [
+    "Q507815", "Q203749", "Q204450", "Q317863", "Q313205", "Q312659", "Q11966", "Q109428", "Q15620192",
+    "Q116743", "Q713895", "Q2301910", "Q314373", "Q918473", "Q20744140", "Q207407", "Q299367",
+    "Q295891", "Q373547", "Q204059", "Q211151", "Q296965", "Q19041", "Q605817", "Q184218", "Q15044053",
+]
+TURKISH_CLUB_NAMES = ("Galatasaray", "Fenerbahçe", "Beşiktaş", "Trabzonspor", "Başakşehir", "Bursaspor", "Sivasspor",
+                      "Kayserispor", "Antalyaspor", "Konyaspor", "Gençlerbirliği", "Ankaragücü", "Göztepe", "Kasımpaşa",
+                      "Alanyaspor", "Rizespor", "Gaziantep", "Hatayspor", "Adana Demirspor", "Samsunspor", "Eskişehirspor",
+                      "Denizlispor", "Kocaelispor", "Malatyaspor", "Akhisar", "Eyüpspor", "Bodrum", "Manisaspor")
+
+
+def add_superlig():
+    """Adds foreign players who played in the Süper Lig (most famous first) to raw.json."""
+    pool = json.load(open(os.path.join(ROOT, "scripts", "pool_raw.json"), encoding="utf-8"))
+    raw = json.load(open(RAW, encoding="utf-8"))
+    # Turkish clubs (by name), to find players who played in Turkey.
+    turkish_clubs = {cid for cid, c in pool["clubs"].items()
+                     if any(n in (c["labels"].get("en") or {}).get("value", "") for n in TURKISH_CLUB_NAMES)}
+    cands = list(MUST_SUPERLIG)
+    for pid in dict.fromkeys(pool["glob"] + pool["sl"]):
+        e = pool["players"].get(pid)
+        if not e or not e.get("male") or pid in cands:
+            continue
+        nats = [n for n, _ in sorted(e["p1532"], key=lambda x: x[1] != "preferred")] or [n for n, _ in e["p27"]]
+        if not nats or nats[0] == "Q43" or not turkish_clubs & set(e["p54"]):
+            continue
+        cands.append(pid)
+    new = [pid for pid in cands if pid not in raw["players"]][: FOREIGN_SUPERLIG_COUNT * 2]
+    ents = entities(new, "labels|claims|sitelinks")
+    slim = lambda d, props: {k: {"labels": v.get("labels", {}), "claims": {p: v.get("claims", {}).get(p, []) for p in props},
+                                 "sitelinks": len(v.get("sitelinks", {}))} for k, v in d.items()}
+    raw["players"].update(slim(ents, ["P569", "P570", "P2048", "P18", "P21", "P413", "P1532", "P27", "P166", "P54"]))
+    club_ids, misc = set(), set()
+    for e in ents.values():
+        club_ids.update(claim_ids(e, "P54"))
+        for prop in ("P413", "P1532", "P27"):
+            misc.update(claim_ids(e, prop))
+    clubs = entities([c for c in club_ids if c not in raw["clubs"]], "labels|claims")
+    raw["clubs"].update(slim(clubs, ["P118", "P31"]))
+    for e in clubs.values():
+        misc.update(claim_ids(e, "P118"))
+    labels = entities([m for m in misc if m not in raw["labels"]], "labels|claims")
+    raw["labels"].update(slim(labels, ["P30"]))
+    raw["fsl"] = cands
+    with open(RAW, "w", encoding="utf-8") as f:
+        json.dump(raw, f, ensure_ascii=False)
+    print("foreign Süper Lig candidates", len(cands), "newly fetched", len(new))
+
+
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "addsl":
+    add_superlig()
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] in ("build", "list"):
     build(list_only=sys.argv[1] == "list")
