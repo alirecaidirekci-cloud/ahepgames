@@ -86,19 +86,29 @@ function scoreBar() {
   <p class="hint center">${t("firstTo", { n: logic.WIN_SCORE })} · ⚖️ ${nameOf(logic.adminOf(room))}</p>`;
 }
 
+// Spectators (anyone who is neither a player nor the game admin) could whisper answers,
+// so they see nothing about the picks until the round's result.
+const isWatcher = (room, key) => !room.roles?.[key] || !room.players?.[key];
+
 // While players are still picking, a pick is shown only to its picker and the game admin;
-// the others only see whether it is a club or a nation. Both are revealed together.
+// the other player only sees whether it is a club or a nation. Both are revealed together.
 function picksView(picks, phase) {
   const room = state.room;
   const me = state.me.key;
-  const canSee = (p) => phase !== "pick" || p.by === me || logic.adminOf(room) === me;
+  const watcher = isWatcher(room, me);
+  const canSee = (p) => (watcher ? phase === "result" : phase !== "pick" || p.by === me || logic.adminOf(room) === me);
   return html`<div class="picks">
     ${[0, 1].map((i) => {
       const p = picks[i];
       if (!p) return html`<div class="card pick-card"><small>…</small><b>?</b></div>`;
-      return html`<div class="card pick-card ${phase === "guess" ? "revealed" : ""}">
+      const revealNow = watcher ? phase === "result" : phase === "guess";
+      return html`<div class="card pick-card ${revealNow ? "revealed" : ""}">
         <small>${nameOf(p.by)}</small>
-        ${canSee(p) ? html`<b>${pickIcon(p)} ${pickName(p)}</b>` : html`<b>${pickIcon(p)} ?</b><small>${t(p.kind === "club" ? "pickedClub" : "pickedNation")}</small>`}
+        ${canSee(p)
+          ? html`<b>${pickIcon(p)} ${pickName(p)}</b>`
+          : watcher
+          ? html`<b>?</b><small>${t("pickedHidden")}</small>`
+          : html`<b>${pickIcon(p)} ?</b><small>${t(p.kind === "club" ? "pickedClub" : "pickedNation")}</small>`}
       </div>`;
     })}
   </div>`;
@@ -176,6 +186,9 @@ function guessPhase(isAdmin) {
   const [a, b] = logic.contestants(room);
   const prompt = html`<p class="question center">${t("sayPlayer", { a: describe(picks[0]), b: describe(picks[1]) })}</p>
     <p class="center"><span class="timer ${left < 15000 ? "urgent" : ""}">⏱ ${fmtTime(left)}</span></p>`;
+  if (isWatcher(room, state.me.key))
+    return html`<p class="big center">🗣️ ${t("watcherGuessing")}</p>
+      <p class="center"><span class="timer ${left < 15000 ? "urgent" : ""}">⏱ ${fmtTime(left)}</span></p>`;
   if (!isAdmin) return html`${prompt}<p class="hint center">${t("sayAloud")}</p>`;
   const found = matches(picks);
   const chosen = state.ui.answer;
