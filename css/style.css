@@ -97,7 +97,7 @@ input, select {
 .board tr.mine td { background: rgba(47, 109, 246, 0.08); }
 
 .room-list { display: grid; gap: 8px; }
-.room-item { display: flex; gap: 14px; align-items: center; text-align: left; width: 100%; margin: 0; }
+.room-item { display: flex; gap: 10px; align-items: center; text-align: left; width: 100%; margin: 0; flex-wrap: wrap; }
 .room-item span:nth-child(2) { flex: 1; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .room-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
 
@@ -253,3 +253,5 @@ textarea { font: inherit; padding: 9px 12px; border-radius: 10px; border: 1px so
 
 .pick-card.revealed { animation: reveal-pick 0.5s ease-out; }
 @keyframes reveal-pick { from { transform: rotateY(90deg); opacity: 0.3; } to { transform: none; opacity: 1; } }
+
+.watch-note { background: var(--bg); border: 1px dashed var(--accent); border-radius: 10px; padding: 8px 12px; margin: 0 0 10px; font-weight: 600; }

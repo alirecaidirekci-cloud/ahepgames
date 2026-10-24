@@ -74,7 +74,7 @@ function lobby() {
           <ul class="players">
             ${m.map((p) => html`<li>${p.name} ${p.key === me ? html`<small>(${t("you")})</small>` : nothing}</li>`)}
           </ul>
-          ${mine ? nothing : html`<button @click=${() => act({ type: "setTeam", team })}>${t("joinTeam")}</button>`}
+          ${mine || !room.players[me] ? nothing : html`<button @click=${() => act({ type: "setTeam", team })}>${t("joinTeam")}</button>`}
           <h4>${t("teamSubjects", { n: chosen.length, min: logic.MIN_SUBJECTS })}</h4>
           <div class="chips">
             ${SUBJECTS.map(

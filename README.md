@@ -44,6 +44,12 @@ everything is stored in this browser, and each tab can log in as a different pla
 
 Share the link with your friends. 🎉
 
+## Watching games
+Anyone can watch a room with the **Watch / İzle** button, also while a game is running. Spectators
+never see secret information: the secret footballer (until the end), teams' suggestions and votes,
+picks before both players have chosen, the game admin's answer list, or the hidden auction player.
+A spectator can switch to playing with **Join the game** while the room is still waiting.
+
 ## Game rules
 
 **Guess the Footballer** (2–6 players)

@@ -1,7 +1,7 @@
 // App shell: login, home (games + leaderboard), room lists, routing to game screens.
 import { initDb, db, isLocal } from "./db.js";
 import { t, getLang, setLang } from "./i18n.js";
-import { html, render, nothing, nameKey, validName, createRoom, joinRoom, leaveRoom, watchRooms, roomPlayers } from "./lib.js";
+import { html, render, nothing, nameKey, validName, createRoom, joinRoom, leaveRoom, spectateRoom, isSpectator, watchRooms, roomPlayers } from "./lib.js";
 import * as footballer from "./footballer/view.js";
 import * as trivia from "./trivia/view.js";
 import * as academic from "./academic/view.js";
@@ -70,8 +70,13 @@ async function onRoute() {
     unsub.push(watchRooms(game, (list) => ((state.rooms = list), rerender())));
   } else if (GAMES[game] && code) {
     await GAMES[game].prepare?.();
+    let registered = false;
     unsub.push(
       db.on(`rooms/${game}/${code}`, (room) => {
+        if (room && !registered && isSpectator(room, state.me.key) && !room.spectators?.[state.me.key]) {
+          registered = true;
+          spectateRoom(game, code, state.me);
+        }
         state.room = room;
         if (!room) state.error = t("roomNotFound");
         GAMES[game].onRoom?.(room, code);
@@ -209,6 +214,11 @@ function roomListView(game) {
     if (res === "ok") go(`#/${game}/${code}`);
     else ((state.error = t(res === "full" ? "roomFull" : "roomNotFound")), rerender());
   };
+  const watch = async (code) => {
+    code = code.trim().toUpperCase();
+    if ((await spectateRoom(game, code, state.me)) === "ok") go(`#/${game}/${code}`);
+    else ((state.error = t("roomNotFound")), rerender());
+  };
   return html`
     <a href="#/" class="back">${t("back")}</a>
     <h2>${t(game)}</h2>
@@ -220,6 +230,7 @@ function roomListView(game) {
       <form class="row" @submit=${(e) => (e.preventDefault(), join(new FormData(e.target).get("code")))}>
         <input name="code" placeholder=${t("joinCode")} maxlength="5" class="code-input" />
         <button>${t("join")}</button>
+        <button type="button" @click=${(e) => watch(e.target.form.code.value)}>👀 ${t("watch")}</button>
       </form>
     </div>
     ${state.error ? html`<p class="error">${state.error}</p>` : nothing}
@@ -228,9 +239,13 @@ function roomListView(game) {
       ? html`<div class="room-list">
           ${state.rooms.map((r) => {
             const ps = roomPlayers(r);
-            return html`<button class="card room-item" @click=${() => join(r.code)}>
-              <b>${r.code}</b><span>${ps.map((p) => p.name).join(", ")}</span><span class="pill">${ps.length}/${mod.MAX_PLAYERS}</span>
-            </button>`;
+            const open = r.status === "lobby" && ps.length < mod.MAX_PLAYERS;
+            return html`<div class="card room-item">
+              <b>${r.code}</b><span>${ps.map((p) => p.name).join(", ")}</span>
+              <span class="pill">${r.status === "lobby" ? t("statusWaiting") : t("statusPlaying")} · ${ps.length}/${mod.MAX_PLAYERS}</span>
+              ${open ? html`<button class="small primary" @click=${() => join(r.code)}>${t("join")}</button>` : nothing}
+              <button class="small" @click=${() => watch(r.code)}>👀 ${t("watch")}</button>
+            </div>`;
           })}
         </div>`
       : html`<p class="hint">${t("noRooms")}</p>`}
@@ -244,10 +259,24 @@ export function roomHeader(game) {
     await leaveRoom(game, room.code, state.me);
     go(`#/${game}`);
   };
+  const watchers = Object.values(room.spectators || {}).map((s) => s.name);
   return html`<div class="room-head">
-    <a href="#/${game}" class="back" @click=${(e) => (e.preventDefault(), leave())}>${t("back")}</a>
-    <span>${t(game)} · ${t("room")} <b class="code">${room.code}</b></span>
-  </div>`;
+      <a href="#/${game}" class="back" @click=${(e) => (e.preventDefault(), leave())}>${t("back")}</a>
+      <span>${t(game)} · ${t("room")} <b class="code">${room.code}</b></span>
+    </div>
+    ${isSpectator(room, state.me.key)
+      ? html`<p class="watch-note">
+          👀 ${t("youWatch")}
+          ${room.status === "lobby"
+            ? html`<button class="small primary" @click=${async () => {
+                const res = await joinRoom(game, room.code, state.me, GAMES[game].MAX_PLAYERS, GAMES[game].joinFields?.() || {});
+                if (res !== "ok") ((state.error = t(res === "full" ? "roomFull" : "roomNotFound")), rerender());
+              }}>${t("joinGame")}</button>`
+            : nothing}
+        </p>`
+      : nothing}
+    ${watchers.length ? html`<p class="hint">👀 ${t("watchers", { names: watchers.join(", ") })}</p>` : nothing}
+    ${state.error ? html`<p class="error">${state.error}</p>` : nothing}`;
 }
 
 // Confirmation dialog: setUi({confirm: {text, yes: fn}})

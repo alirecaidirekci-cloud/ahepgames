@@ -2,7 +2,7 @@
 import { state, act, setUi, roomHeader } from "../app.js";
 import { db } from "../db.js";
 import { t } from "../i18n.js";
-import { html, nothing, arr, fmtTime, roomPlayers, awardOnce } from "../lib.js";
+import { html, nothing, arr, fmtTime, roomPlayers, awardOnce, isSpectator } from "../lib.js";
 import * as data from "./data.js";
 import * as logic from "./logic.js";
 
@@ -121,6 +121,7 @@ function playing() {
   const cands = data.candidates(log);
   const wrong = new Set(log.filter((e) => e.kind === "g" && !e.ok).map((e) => e.pid));
   const isPicker = room.picker === me;
+  const watching = isSpectator(room, me);
   return html`
     <div class="status-bar">
       <span class="timer ${left < 60000 ? "urgent" : ""}">⏱ ${fmtTime(left)}</span>
@@ -129,16 +130,16 @@ function playing() {
     </div>
     <div class="cols">
       <div class="col-left">
-        ${isPicker ? secretCard() : askPanel(u)}
+        ${isPicker ? secretCard() : watching ? html`<div class="card"><p>👀 ${t("secretHidden")}</p></div>` : askPanel(u)}
         ${proposalBox()}
         ${logView(log)}
       </div>
       <div class="col-right card">
         <h3>${t("candidates", { n: cands.length })}</h3>
-        ${isPicker ? nothing : html`<p class="hint">${t("guessHint")}</p>`}
+        ${isPicker || watching ? nothing : html`<p class="hint">${t("guessHint")}</p>`}
         <div class="grid">
           ${[...cands, ...data.players().filter((p) => wrong.has(p.id))].map((p) =>
-            photo(p, { crossed: wrong.has(p.id), onClick: isPicker || wrong.has(p.id) ? null : () => guess(p, u) })
+            photo(p, { crossed: wrong.has(p.id), onClick: isPicker || watching || wrong.has(p.id) ? null : () => guess(p, u) })
           )}
         </div>
       </div>

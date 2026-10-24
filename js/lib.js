@@ -61,14 +61,34 @@ export async function joinRoom(game, code, me, maxPlayers, extraFields = {}) {
     }
     result = "ok";
     room.players = { ...(room.players || {}), [me.key]: { name: me.name, t: db.now(), ...extraFields } };
+    if (room.spectators) delete room.spectators[me.key];
     return room;
   });
   return result;
 }
 
+// Watch a room without playing (allowed at any time). Returns "ok" or "notfound".
+export async function spectateRoom(game, code, me) {
+  let result = "notfound";
+  await db.tx(`rooms/${game}/${code}`, (room) => {
+    if (!room) return undefined;
+    result = "ok";
+    if (room.players?.[me.key] || room.spectators?.[me.key]) return undefined;
+    room.spectators = { ...(room.spectators || {}), [me.key]: { name: me.name, t: db.now() } };
+    return room;
+  });
+  return result;
+}
+
+export const isSpectator = (room, key) => !room?.players?.[key];
+
 export async function leaveRoom(game, code, me) {
   await db.tx(`rooms/${game}/${code}`, (room) => {
     if (!room) return undefined;
+    if (room.spectators?.[me.key]) {
+      delete room.spectators[me.key];
+      return room;
+    }
     if (room.status !== "lobby") return undefined; // games in progress keep their players
     delete room.players?.[me.key];
     const left = roomPlayers(room);
@@ -78,7 +98,7 @@ export async function leaveRoom(game, code, me) {
   });
 }
 
-// Live list of lobby rooms for a game; also deletes stale rooms.
+// Live list of rooms that are waiting or being played; also deletes stale rooms.
 export function watchRooms(game, cb) {
   return db.on(`rooms/${game}`, (rooms) => {
     const now = db.now();
@@ -88,7 +108,7 @@ export function watchRooms(game, cb) {
         db.set(`rooms/${game}/${code}`, null);
         continue;
       }
-      if (r.status === "lobby") list.push(r);
+      if (r.status === "lobby" || r.status === "playing") list.push(r);
     }
     cb(list.sort((a, b) => b.createdAt - a.createdAt));
   });

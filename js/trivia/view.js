@@ -76,7 +76,9 @@ function lobby() {
             ? room.captains?.[team] !== me
               ? html`<button class="small" @click=${() => act({ type: "beCaptain" })}>${t("beCaptain")}</button>`
               : nothing
-            : html`<button @click=${() => act({ type: "setTeam", team })}>${t("joinTeam")}</button>`}
+            : room.players[me]
+            ? html`<button @click=${() => act({ type: "setTeam", team })}>${t("joinTeam")}</button>`
+            : nothing}
         </div>`;
       })}
     </div>
