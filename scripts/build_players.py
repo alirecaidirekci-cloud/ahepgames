@@ -206,6 +206,40 @@ def by_rank(ent, prop):
     return [c["mainsnak"]["datavalue"]["value"]["id"] for c in cs]
 
 
+NOW = time.gmtime().tm_year + (time.gmtime().tm_mon - 1) / 12
+# Retired players whose Wikidata club history still has an open, never-closed spell
+# (Huntelaar, Tevez, Muntari, Fàbregas, Colin Kâzım, İbrahim Kaş, Mevlüt Erdinç, Volkan Şen,
+# Ersan Gülüm, Serdar Özkan, Moussa Sow).
+RETIRED_FIX = set(['Q26069', 'Q50600', 'Q193768', 'Q17499', 'Q313145', 'Q343331', 'Q440846', 'Q787409', 'Q283737', 'Q577265', 'Q314373'])
+
+
+def when(qualifier, start):
+    """A start/end qualifier as a fractional year; None = no date / "no value" / "unknown value"."""
+    if not qualifier or qualifier[0].get("snaktype") != "value":
+        return None
+    t = qualifier[0]["datavalue"]["value"]["time"]
+    year, month = int(t[1:5]), int(t[6:8])
+    if month == 0:  # only the year is known: start of it for starts, end of it for ends
+        return year if start else year + 0.99
+    return year + (month - 1) / 12
+
+
+def is_active(spells, born):
+    """Still playing? True if any club spell is current: open-ended (no end / "no value" /
+    "unknown value" — Wikidata uses all three for current clubs), or ending recently or in the
+    future (contract end dates). An open spell that started long ago for a veteran is treated as
+    a spell that was never closed, not as a current club."""
+    if not spells:
+        return born >= 1995  # no club data: young players are active
+    for start, end in spells:
+        if end is None:
+            if not (born <= 1985 and start is not None and start < NOW - 8):
+                return True
+        elif end >= NOW - 0.5:
+            return True
+    return False
+
+
 def load_appearance():
     path = os.path.join(ROOT, "scripts", "appearance.txt")
     out = {}
@@ -252,7 +286,7 @@ def build(list_only=False):
         nat = NAT_FIX.get(pid) or next((n for n in by_rank(e, "P1532") + by_rank(e, "P27") if ids_of(L.get(n, {"claims": {}}), "P30")), None)
         if not nat:
             return None
-        clubs, leagues, active = [], [], False
+        clubs, leagues, spells = [], [], []
         for c in e["claims"].get("P54", []):
             dv = c["mainsnak"].get("datavalue")
             if not dv:
@@ -266,8 +300,9 @@ def build(list_only=False):
                 continue
             if cname.endswith((" B", " C", " Atlètic", " Castilla", " U19", " U21", " U23")) or any(w in cname for w in YOUTH_WORDS) or " II" in cname or "Reserves" in cname or "Youth" in cname or "Primavera" in cname:
                 continue
-            if "P582" not in c.get("qualifiers", {}):
-                active = True
+            q = c.get("qualifiers", {})
+            if "olympic" not in cname.lower():
+                spells.append((when(q.get("P580"), start=True), when(q.get("P582"), start=False)))
             if cid not in [x[0] for x in clubs]:
                 clubs.append((cid, cname))
             club_leagues = ids_of(ce, "P118") + [lg for lg, names in FORMER_TOP_FLIGHT.items()
@@ -275,6 +310,7 @@ def build(list_only=False):
             for lg in club_leagues:
                 if lg in QUESTION_LEAGUES and lg not in leagues:
                     leagues.append(lg)
+        active = is_active(spells, born) and pid not in RETIRED_FIX
         if died or born < 1982:
             active = False
         nl = L.get(nat, {})
