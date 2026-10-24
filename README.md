@@ -101,6 +101,8 @@ Appearance tags (hair, beard, skin tone), World Cup winners and missing position
 - The host makes one person the game admin and two people players (others can watch).
 - Each round both players pick a club or a nation from a list (at least one club; anything picked
   once can't be picked again). A coin flip decides who picks first; this alternates every round.
+- Picks stay hidden until both players have chosen (the second player only sees whether the first
+  pick is a club or a nation), then both are revealed together.
 - Players say out loud a footballer who fits both picks. The game admin sees the matching players
   from our database (correct players outside it also count) and clicks who said it first.
 - 60 seconds per round; the admin can also end a round with "No valid player". First to 3 wins (+100 pts).

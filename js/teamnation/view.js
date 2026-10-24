@@ -86,12 +86,19 @@ function scoreBar() {
   <p class="hint center">${t("firstTo", { n: logic.WIN_SCORE })} · ⚖️ ${nameOf(logic.adminOf(room))}</p>`;
 }
 
-function picksView(picks) {
+// While players are still picking, a pick is shown only to its picker and the game admin;
+// the others only see whether it is a club or a nation. Both are revealed together.
+function picksView(picks, phase) {
+  const room = state.room;
+  const me = state.me.key;
+  const canSee = (p) => phase !== "pick" || p.by === me || logic.adminOf(room) === me;
   return html`<div class="picks">
     ${[0, 1].map((i) => {
       const p = picks[i];
-      return html`<div class="card pick-card">
-        ${p ? html`<small>${nameOf(p.by)}</small><b>${pickIcon(p)} ${pickName(p)}</b>` : html`<small>…</small><b>?</b>`}
+      if (!p) return html`<div class="card pick-card"><small>…</small><b>?</b></div>`;
+      return html`<div class="card pick-card ${phase === "guess" ? "revealed" : ""}">
+        <small>${nameOf(p.by)}</small>
+        ${canSee(p) ? html`<b>${pickIcon(p)} ${pickName(p)}</b>` : html`<b>${pickIcon(p)} ?</b><small>${t(p.kind === "club" ? "pickedClub" : "pickedNation")}</small>`}
       </div>`;
     })}
   </div>`;
@@ -110,7 +117,7 @@ function playing() {
   return html`${scoreBar()}
     <div class="card">
       <h3>${t("roundN", { n: round.n })}</h3>
-      ${picksView(picks)} ${body}
+      ${picksView(picks, round.phase)} ${body}
     </div>
     ${roundLog()}`;
 }
@@ -124,7 +131,9 @@ function pickPhase() {
   const mustClub = picks.length === 1 && picks[0].kind === "nation";
   const kind = mustClub ? "club" : state.ui.kind || "club";
   const q = (state.ui.q || "").toLocaleLowerCase();
-  const used = room.used || {};
+  // Leave this round's hidden pick in the list so its absence doesn't give it away.
+  const used = { ...(room.used || {}) };
+  for (const p of picks) delete used[p.id];
   const all = data.players();
   const count = {};
   for (const p of all) {
@@ -138,9 +147,16 @@ function pickPhase() {
     .filter((o) => !q || o.name.toLocaleLowerCase().includes(q))
     .sort((a, b) => (count[b.id] || 0) - (count[a.id] || 0))
     .slice(0, 40);
-  const choose = (o) => setUi({ confirm: { text: t("pickConfirm", { name: o.name }), yes: () => act({ type: "pick", kind, id: o.id }) } });
+  const choose = (o) =>
+    setUi({
+      confirm: {
+        text: t("pickConfirm", { name: o.name }),
+        yes: async () => setUi({ pickError: !(await act({ type: "pick", kind, id: o.id })) }),
+      },
+    });
   return html`<p class="big">🎯 ${t("yourPick")}</p>
     ${mustClub ? html`<p class="hint">${t("mustClub")}</p>` : nothing}
+    ${state.ui.pickError ? html`<p class="error">${t("alreadyPicked")}</p>` : nothing}
     <div class="row">
       ${mustClub
         ? nothing
