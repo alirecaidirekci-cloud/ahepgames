@@ -39,6 +39,8 @@ export function autoStart(room, startFn) {
   (async () => {
     try {
       if (await act({ type: "claimStart" })) await startFn();
+    } catch {
+      // e.g. the question service was busy: the claim expires and the start is tried again
     } finally {
       setTimeout(() => (starting = null), 5000);
     }
