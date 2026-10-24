@@ -1,7 +1,7 @@
 // App shell: login, home (games + leaderboard), room lists, routing to game screens.
 import { initDb, db, isLocal } from "./db.js";
 import { t, getLang, setLang } from "./i18n.js";
-import { html, render, nothing, nameKey, validName, createRoom, joinRoom, leaveRoom, spectateRoom, isSpectator, watchRooms, roomPlayers } from "./lib.js";
+import { html, render, nothing, nameKey, validName, createRoom, joinRoom, leaveRoom, spectateRoom, isSpectator, watchRooms, roomPlayers, closeRoom, cleanupRooms } from "./lib.js";
 import * as footballer from "./footballer/view.js";
 import * as trivia from "./trivia/view.js";
 import * as academic from "./academic/view.js";
@@ -44,7 +44,11 @@ export function setUi(patch) {
 export async function act(action) {
   const [game, code] = state.route;
   const mod = GAMES[game];
-  const r = await db.tx(`rooms/${game}/${code}`, (room) => mod.reduce(room, action, state.me.key, db.now()));
+  const r = await db.tx(`rooms/${game}/${code}`, (room) => {
+    const next = mod.reduce(room, action, state.me.key, db.now());
+    if (next) next.updatedAt = db.now(); // rooms without activity are cleaned up
+    return next;
+  });
   return r.committed;
 }
 
@@ -64,6 +68,7 @@ async function onRoute() {
   if (!state.me) return rerender();
   if (!game) {
     unsub.push(db.on("scores", (s) => ((state.leaderboard = s || {}), rerender())));
+    cleanupRooms(Object.keys(GAMES));
   } else if (GAMES[game]?.pages?.[code]) {
     unsub.push(...(GAMES[game].pages[code].enter?.() || []));
   } else if (GAMES[game] && !code) {
@@ -71,8 +76,18 @@ async function onRoute() {
   } else if (GAMES[game] && code) {
     await GAMES[game].prepare?.();
     let registered = false;
+    let seen = false;
     unsub.push(
       db.on(`rooms/${game}/${code}`, (room) => {
+        // The room was closed (by the host or automatically): go back to the room list.
+        if (!room && seen) {
+          state.room = null;
+          state.error = t("roomClosed");
+          rerender();
+          setTimeout(() => state.route[1] === code && go(`#/${game}`), 2500);
+          return;
+        }
+        seen = seen || !!room;
         if (room && !registered && isSpectator(room, state.me.key) && !room.spectators?.[state.me.key]) {
           registered = true;
           spectateRoom(game, code, state.me);
@@ -260,9 +275,14 @@ export function roomHeader(game) {
     go(`#/${game}`);
   };
   const watchers = Object.values(room.spectators || {}).map((s) => s.name);
+  const close = () =>
+    setUi({ confirm: { text: t("closeRoomConfirm"), yes: async () => (await closeRoom(game, room.code), go(`#/${game}`)) } });
   return html`<div class="room-head">
       <a href="#/${game}" class="back" @click=${(e) => (e.preventDefault(), leave())}>${t("back")}</a>
-      <span>${t(game)} · ${t("room")} <b class="code">${room.code}</b></span>
+      <span class="row">
+        <span>${t(game)} · ${t("room")} <b class="code">${room.code}</b></span>
+        ${room.host === state.me.key ? html`<button class="small" @click=${close}>🚪 ${t("closeRoom")}</button>` : nothing}
+      </span>
     </div>
     ${isSpectator(room, state.me.key)
       ? html`<p class="watch-note">

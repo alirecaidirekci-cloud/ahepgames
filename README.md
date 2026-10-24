@@ -51,6 +51,11 @@ the Team & Nation Guess picks (until the round's result), the game admin's answe
 hidden auction player.
 A spectator can switch to playing with **Join the game** while the room is still waiting.
 
+## Closing rooms
+The host can close a room at any time (**Close room / Odayı kapat**); everyone inside goes back to the
+room list. Rooms are also deleted automatically: when the last player leaves, 3 minutes after a game
+ends, after 45 minutes without any action, or after 6 hours at most.
+
 ## Game rules
 
 **Guess the Footballer** (2–6 players)

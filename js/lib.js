@@ -6,7 +6,28 @@ import { getLang } from "./i18n.js";
 export { arr };
 
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const ROOM_MAX_AGE = 6 * 3600 * 1000;
+// Rooms are deleted automatically when they are finished or abandoned.
+const ROOM_MAX_AGE = 6 * 3600 * 1000; // any room
+const ROOM_IDLE_MS = 45 * 60 * 1000; // no action for 45 minutes
+const ENDED_KEEP_MS = 3 * 60 * 1000; // results stay visible for 3 minutes
+
+export function isStaleRoom(r, now) {
+  if (!r || typeof r !== "object") return true;
+  if (now - (r.createdAt || 0) > ROOM_MAX_AGE) return true;
+  if (now - (r.updatedAt || r.createdAt || 0) > ROOM_IDLE_MS) return true;
+  return r.status === "ended" && now - (r.endedAt || r.updatedAt || 0) > ENDED_KEEP_MS;
+}
+
+export const closeRoom = (game, code) => db.set(`rooms/${game}/${code}`, null);
+
+// Deletes stale rooms of the given games (run when someone opens the home page).
+export async function cleanupRooms(games) {
+  const now = db.now();
+  for (const game of games) {
+    const rooms = await db.get(`rooms/${game}`).catch(() => null);
+    for (const [code, r] of Object.entries(rooms || {})) if (isStaleRoom(r, now)) closeRoom(game, code);
+  }
+}
 
 export const nameKey = (name) => name.trim().toLowerCase();
 export const validName = (name) => /^[\p{L}\p{N}_]{3,16}$/u.test(name.trim());
@@ -38,7 +59,7 @@ export async function createRoom(game, me, extra = {}) {
     const code = Array.from({ length: 5 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join("");
     const now = db.now();
     const r = await db.tx(`rooms/${game}/${code}`, (cur) =>
-      cur ? undefined : { code, host: me.key, status: "lobby", createdAt: now, players: { [me.key]: { name: me.name, t: now } }, ...extra }
+      cur ? undefined : { code, host: me.key, status: "lobby", createdAt: now, updatedAt: now, players: { [me.key]: { name: me.name, t: now } }, ...extra }
     );
     if (r.committed) return code;
   }
@@ -62,6 +83,7 @@ export async function joinRoom(game, code, me, maxPlayers, extraFields = {}) {
     result = "ok";
     room.players = { ...(room.players || {}), [me.key]: { name: me.name, t: db.now(), ...extraFields } };
     if (room.spectators) delete room.spectators[me.key];
+    room.updatedAt = db.now();
     return room;
   });
   return result;
@@ -89,10 +111,11 @@ export async function leaveRoom(game, code, me) {
       delete room.spectators[me.key];
       return room;
     }
-    if (room.status !== "lobby") return undefined; // games in progress keep their players
+    if (room.status === "playing") return undefined; // games in progress keep their players
     delete room.players?.[me.key];
     const left = roomPlayers(room);
-    if (!left.length) return null;
+    if (!left.length) return null; // last player gone: the room is deleted
+    room.updatedAt = db.now();
     if (room.host === me.key) room.host = left[0].key;
     return room;
   });
@@ -104,8 +127,8 @@ export function watchRooms(game, cb) {
     const now = db.now();
     const list = [];
     for (const [code, r] of Object.entries(rooms || {})) {
-      if (!r || now - (r.createdAt || 0) > ROOM_MAX_AGE) {
-        db.set(`rooms/${game}/${code}`, null);
+      if (isStaleRoom(r, now)) {
+        closeRoom(game, code);
         continue;
       }
       if (r.status === "lobby" || r.status === "playing") list.push(r);
