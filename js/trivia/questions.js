@@ -87,8 +87,9 @@ async function translateLines(lines) {
 export async function addTurkish(questions) {
   const chunks = [];
   for (let i = 0; i < questions.length; i += 4) chunks.push(questions.slice(i, i + 4));
-  await Promise.all(
-    chunks.map(async (chunk) => {
+  // One request at a time with a retry: the free service refuses bursts of parallel requests.
+  for (const chunk of chunks) {
+    for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const lines = chunk.map((q) => q.q.replace(/\s+/g, " ") + " " + q.answers.map((a, i) => `[${i + 1}] ${a}`).join(" "));
         const out = await translateLines(lines);
@@ -101,11 +102,13 @@ export async function addTurkish(questions) {
             answers: q.answers.map((en, i) => (KEEP_ANSWERS.has(q.cat) || isNumberLike(en) || !answers[i] ? en : matchCase(answers[i], en))),
           };
         });
+        break;
       } catch {
-        // network or service problem: these questions stay English only
+        // network or service problem: wait and retry; after 3 tries these questions stay English
+        await sleep(1200 * (attempt + 1));
       }
-    })
-  );
+    }
+  }
   return questions;
 }
 

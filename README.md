@@ -131,6 +131,10 @@ Appearance tags (hair, beard, skin tone), World Cup winners and missing position
   the other player gets the hidden one for free. If only one player has money left, they get the
   shown player for €1. Both teams always end with 5 players.
 
+## Publishing changes
+Run `py scripts/release.py` before each commit. It stamps a new version in `version.json` and
+`js/app.js`; browsers that still have the old files cached notice it, re-download and reload once.
+
 ## Known limits
 - No passwords, so anyone could log in with someone else's username. Fine among friends.
 - Scores are computed in the browser, so a tech-savvy friend could cheat.

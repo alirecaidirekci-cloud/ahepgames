@@ -9,6 +9,22 @@ import * as teamnation from "./teamnation/view.js";
 import * as auction from "./auction/view.js";
 
 const GAMES = { footballer, trivia, academic, teamnation, auction };
+
+// Set by scripts/release.py. If version.json on the server is newer, this browser still runs
+// cached old files: re-download them and reload once.
+export const APP_VERSION = "20261024-130653";
+async function updateIfNeeded() {
+  try {
+    const info = await (await fetch("version.json", { cache: "no-store" })).json();
+    if (!info?.v || info.v === APP_VERSION || sessionStorage.getItem("fg-updated-to") === info.v) return false;
+    sessionStorage.setItem("fg-updated-to", info.v);
+    await Promise.all(info.files.map((f) => fetch(f, { cache: "reload" }).catch(() => null)));
+    location.reload();
+    return true;
+  } catch {
+    return false;
+  }
+}
 // Home page rows: football games and quiz games.
 const GAME_GROUPS = [
   ["footballGames", ["footballer", "teamnation", "auction"]],
@@ -67,6 +83,7 @@ async function onRoute() {
   const [game, code] = state.route;
   if (!state.me) return rerender();
   if (!game) {
+    updateIfNeeded();
     unsub.push(db.on("scores", (s) => ((state.leaderboard = s || {}), rerender())));
     cleanupRooms(Object.keys(GAMES));
   } else if (GAMES[game]?.pages?.[code]) {
@@ -324,6 +341,7 @@ setInterval(() => {
 }, 1000);
 
 (async function boot() {
+  if (await updateIfNeeded()) return;
   try {
     await initDb();
   } catch (e) {

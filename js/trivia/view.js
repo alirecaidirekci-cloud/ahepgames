@@ -1,10 +1,10 @@
 // Screens for Team Trivia.
-import { state, act, setUi, roomHeader } from "../app.js";
+import { state, act, setUi, rerender, roomHeader } from "../app.js";
 import { db } from "../db.js";
 import { t, getLang } from "../i18n.js";
 import { html, nothing, fmtTime, fmtNum, roomPlayers, awardOnce } from "../lib.js";
 import * as logic from "./logic.js";
-import { CATEGORIES, loadQuestions, poolSize } from "./questions.js";
+import { CATEGORIES, loadQuestions, poolSize, addTurkish } from "./questions.js";
 
 export const MAX_PLAYERS = logic.MAX_PLAYERS;
 export const icon = "🧠";
@@ -25,7 +25,23 @@ export function onRoom(room, code) {
 
 const teamName = (team) => t(team === "A" ? "teamA" : "teamB");
 // Question in the viewer's language; Turkish players also see the original answer when it differs.
-const inMyLang = (q) => (getLang() === "tr" && q.tr ? { q: q.tr.q, answers: q.tr.answers, original: q.answers } : { q: q.q, answers: q.answers });
+// If the room's questions came without Turkish (started by an older version, or translation failed
+// for the host), this browser translates the current question itself.
+const localTr = {};
+function inMyLang(q) {
+  if (getLang() !== "tr") return { q: q.q, answers: q.answers };
+  let tr = q.tr;
+  if (!tr) {
+    const key = `${state.room.code}:${state.room.idx}:${q.q}`;
+    if (!(key in localTr)) {
+      localTr[key] = null;
+      const copy = { ...q, answers: [...q.answers] };
+      addTurkish([copy]).then(() => ((localTr[key] = copy.tr || null), rerender()));
+    }
+    tr = localTr[key];
+  }
+  return tr ? { q: tr.q, answers: tr.answers, original: q.answers } : { q: q.q, answers: q.answers };
+}
 const differs = (a, b) => b && a.toLocaleLowerCase("tr") !== b.toLocaleLowerCase("tr");
 const catName = (id) => {
   const c = CATEGORIES.find((c) => c[0] === id);
