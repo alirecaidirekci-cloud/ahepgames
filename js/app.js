@@ -106,7 +106,7 @@ function logout() {
 function shell() {
   return html`
     <header class="top">
-      <a class="brand" href="#/">⚽ ${t("appName")}</a>
+      <a class="brand" href="#/"><img class="logo" src="img/logo.png" alt="" />${t("appName")}</a>
       <div class="top-right">
         ${state.me ? html`<span class="me">👤 ${state.me.name}</span><button class="link" @click=${logout}>${t("logout")}</button>` : nothing}
         <button class="lang" @click=${() => (setLang(getLang() === "tr" ? "en" : "tr"), rerender())}>${getLang() === "tr" ? "EN" : "TR"}</button>

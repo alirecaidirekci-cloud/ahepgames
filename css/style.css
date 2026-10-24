@@ -44,7 +44,8 @@ h3 { margin: 0 0 10px; }
   padding: 10px 16px; background: var(--card); border-bottom: 1px solid var(--line);
   position: sticky; top: 0; z-index: 5;
 }
-.brand { font-weight: 800; font-size: 1.15rem; color: var(--text); }
+.brand { font-weight: 800; font-size: 1.15rem; color: var(--text); display: flex; align-items: center; gap: 10px; }
+.logo { width: 52px; height: 52px; border-radius: 50%; background: #fff; object-fit: cover; border: 2px solid var(--line); }
 .top-right { display: flex; gap: 10px; align-items: center; }
 .me { font-weight: 600; }
 .banner { background: #fff4cc; color: #6b5200; padding: 8px 16px; font-size: 0.9rem; text-align: center; }
