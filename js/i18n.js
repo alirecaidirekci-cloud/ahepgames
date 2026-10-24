@@ -369,7 +369,7 @@ const STR = {
     nobodyGot: "Bu soruda puan yok.",
     draw: "Berabere!",
     teamWins: "{team} kazandı!",
-    triviaLangNote: "Not: Bilgi yarışması soruları İngilizcedir (Open Trivia DB).",
+    triviaLangNote: "Sorular Open Trivia DB'den gelir ve Türkçeye otomatik çevrilir; çeviri farklıysa İngilizce aslı küçük yazıyla gösterilir.",
     academic: "Akademik Bilgi Yarışması",
     academicDesc: "İki takım, seçtikleri bölümlerden üniversite düzeyinde soruları cevaplar. Takım cevabı oy çokluğuyla belirler.",
     academicInfo: "{pool} soru · {subjects} bölüm · her takım en az {min} seçer · oy çokluğu · oyun başına {q} soru",

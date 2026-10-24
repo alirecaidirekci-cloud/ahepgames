@@ -58,10 +58,55 @@ export async function loadQuestions(cats, total) {
     );
   }
   all = shuffle(all);
-  return all.slice(0, total).map((r) => {
+  const questions = all.slice(0, total).map((r) => {
     const answers = shuffle([r.correct, ...r.wrong, ...extraWrong(r, all, OPTIONS - 1 - r.wrong.length)]);
     return { q: r.q, answers, correct: answers.indexOf(r.correct), cat: r.cat, diff: r.diff };
   });
+  await addTurkish(questions);
+  return questions;
+}
+
+// ---------- Turkish translation ----------
+// Questions are machine-translated once, when the game starts, and stored with the room as
+// q.tr = {q, answers}. Each answer is translated together with its question so it gets the
+// right meaning ("Iron" -> "Demir", not "Ütü"). If translation fails the game stays in English.
+
+// Subjects whose answers are mostly names (books, films, songs, games, people…): keep them as they are.
+const KEEP_ANSWERS = new Set([10, 11, 12, 13, 14, 15, 16, 26, 29, 31, 32]);
+const isNumberLike = (s) => /^[\d\s.,%°$€£:+\-–\/]+$/.test(s);
+const matchCase = (tr, en) => (en[0] && en[0] === en[0].toLocaleUpperCase("en") ? tr.charAt(0).toLocaleUpperCase("tr") + tr.slice(1) : tr);
+
+async function translateLines(lines) {
+  const url =
+    "https://translate.googleapis.com/translate_a/single?" +
+    new URLSearchParams({ client: "gtx", sl: "en", tl: "tr", dt: "t", q: lines.join("\n") });
+  const body = await (await fetch(url)).json();
+  return body[0].map((part) => part[0]).join("").split("\n");
+}
+
+export async function addTurkish(questions) {
+  const chunks = [];
+  for (let i = 0; i < questions.length; i += 4) chunks.push(questions.slice(i, i + 4));
+  await Promise.all(
+    chunks.map(async (chunk) => {
+      try {
+        const lines = chunk.map((q) => q.q.replace(/\s+/g, " ") + " " + q.answers.map((a, i) => `[${i + 1}] ${a}`).join(" "));
+        const out = await translateLines(lines);
+        chunk.forEach((q, n) => {
+          const parts = (out[n] || "").split(/\s*\[(\d+)\]\s*/);
+          const answers = parts.filter((_, i) => i >= 2 && i % 2 === 0).map((s) => s.trim());
+          if (!parts[0]?.trim() || answers.length !== q.answers.length) return; // keep English for this one
+          q.tr = {
+            q: parts[0].trim(),
+            answers: q.answers.map((en, i) => (KEEP_ANSWERS.has(q.cat) || isNumberLike(en) || !answers[i] ? en : matchCase(answers[i], en))),
+          };
+        });
+      } catch {
+        // network or service problem: these questions stay English only
+      }
+    })
+  );
+  return questions;
 }
 
 // Open Trivia DB gives 3 wrong answers; the rest are made up here.

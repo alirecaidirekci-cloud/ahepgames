@@ -24,6 +24,9 @@ export function onRoom(room, code) {
 }
 
 const teamName = (team) => t(team === "A" ? "teamA" : "teamB");
+// Question in the viewer's language; Turkish players also see the original answer when it differs.
+const inMyLang = (q) => (getLang() === "tr" && q.tr ? { q: q.tr.q, answers: q.tr.answers, original: q.answers } : { q: q.q, answers: q.answers });
+const differs = (a, b) => b && a.toLocaleLowerCase("tr") !== b.toLocaleLowerCase("tr");
 const catName = (id) => {
   const c = CATEGORIES.find((c) => c[0] === id);
   return c ? (getLang() === "tr" ? c[2] : c[1]) : id;
@@ -130,6 +133,7 @@ function playing() {
       </div>`;
   }
   const q = room.questions[room.idx];
+  const text = inMyLang(q);
   const active = logic.activeTeam(room);
   const myTeam = room.players[me]?.team;
   const isCaptain = room.captains[active] === me;
@@ -142,7 +146,7 @@ function playing() {
 
   const click = (i) => {
     if (!answering || !onMyTeam) return;
-    if (isCaptain) setUi({ confirm: { text: q.answers[i], yes: () => act({ type: "answer", choice: i }) } });
+    if (isCaptain) setUi({ confirm: { text: text.answers[i], yes: () => act({ type: "answer", choice: i }) } });
     else act({ type: "suggest", choice: i });
   };
 
@@ -164,10 +168,10 @@ function playing() {
         </span>
         ${answering ? html`<span class="timer ${left < 15000 ? "urgent" : ""}">⏱ ${fmtTime(left)}</span>` : nothing}
       </div>
-      <p class="question">${q.q}</p>
+      <p class="question">${text.q}</p>
       <p class="phase-msg team-${active}">${message}</p>
       <div class="answers">
-        ${q.answers.map((a, i) => {
+        ${text.answers.map((a, i) => {
           const cls = [
             "answer",
             room.phase === "reveal" && i === q.correct ? "right" : "",
@@ -175,12 +179,13 @@ function playing() {
           ].join(" ");
           return html`<button class=${cls} ?disabled=${!answering || !onMyTeam || (room.phase === "steal" && room.wrongChoice === i)} @click=${() => click(i)}>
             <span>${a}</span>
+            ${text.original && differs(a, text.original[i]) ? html`<small class="orig">${text.original[i]}</small>` : nothing}
             ${onMyTeam && suggestions[i] ? html`<small class="sugg">💡 ${suggestions[i].join(", ")}</small>` : nothing}
           </button>`;
         })}
       </div>
       ${answering && onMyTeam ? html`<p class="hint">${t("captainAnswers")} ${t("captain")}: <b>${room.players[room.captains[active]]?.name}</b></p>` : nothing}
-      ${room.phase === "reveal" ? html`<p>${t("rightAnswer", { a: q.answers[q.correct] })}</p>` : nothing}
+      ${room.phase === "reveal" ? html`<p>${t("rightAnswer", { a: text.answers[q.correct] })}</p>` : nothing}
     </div>`;
 }
 

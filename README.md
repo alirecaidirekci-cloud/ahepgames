@@ -70,7 +70,10 @@ ends, after 45 minutes without any action, or after 6 hours at most.
   The finder gets 70%, the other guessers share 30%.
 
 **Team Trivia** (2 teams, at least 2 players each)
-- The host picks subjects. Questions come from Open Trivia DB (in English): 4,444 multiple-choice
+- The host picks subjects. Questions come from Open Trivia DB (in English) and are machine-translated
+  into Turkish when a game starts; Turkish players also see the original answer when the translation
+  differs. Answers in name-heavy subjects (music, film, TV, games, books, celebrities…) stay as they are.
+  Pool: 4,444 multiple-choice
   questions across 22 subjects (counts per subject are in `js/trivia/questions.js`).
 - Each question shows 10 options. Open Trivia DB supplies 1 right and 3 wrong answers; the other
   6 wrong answers are nearby numbers or similar-looking answers borrowed from other questions.
