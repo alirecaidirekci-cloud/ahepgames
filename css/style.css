@@ -220,3 +220,16 @@ textarea { font: inherit; padding: 9px 12px; border-radius: 10px; border: 1px so
 .squad-list li span { font-size: 0.8rem; color: var(--muted); }
 .squad-list small { color: var(--muted); }
 @media (max-width: 860px) { .auction-layout, .auction-layout.two { grid-template-columns: 1fr; } }
+
+/* welcome mascot on the home page */
+.welcome { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 8px 0 4px; }
+.mascot { height: 170px; width: auto; }
+.bubble {
+  position: relative; background: var(--card); border: 2px solid var(--accent); border-radius: 18px;
+  padding: 14px 20px; font-size: 1.4rem; font-weight: 800; box-shadow: var(--shadow); max-width: 320px;
+}
+.bubble::before {
+  content: ""; position: absolute; left: -14px; top: 50%; transform: translateY(-50%);
+  border: 12px solid transparent; border-right-color: var(--accent); border-left: 0;
+}
+@media (max-width: 760px) { .mascot { height: 120px; } .bubble { font-size: 1.1rem; padding: 10px 14px; } }

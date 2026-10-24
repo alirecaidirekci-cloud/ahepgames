@@ -151,6 +151,10 @@ function homeView() {
   });
   rows.sort((a, b) => b.total - a.total);
   return html`
+    <div class="welcome">
+      <img class="mascot" src="img/mascot.png" alt="" />
+      <div class="bubble">${t("mascotSays")}</div>
+    </div>
     ${GAME_GROUPS.map(
       ([title, keys]) => html`<h2>${t(title)}</h2>
         <div class="games games-${keys.length}">
