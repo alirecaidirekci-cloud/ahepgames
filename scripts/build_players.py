@@ -185,8 +185,6 @@ FORMER_TOP_FLIGHT = {
 # Duplicate Wikidata entries for the same club (e.g. multi-sport club vs football club) -> one id.
 CLUB_MERGE = {"Q19648": "Q6601875", "Q43134": "Q495299", "Q950835": "Q7156"}
 YOUTH_WORDS = ("Juvenil", "Junior", "Academy", "Under-2", "Under-1", " A2", "-2 ")
-# Wikidata types for national teams: national association football team, Olympic football team.
-NATIONAL_TYPES = {"Q6979593", "Q23759293"}
 
 # Wingers (hand-picked; Wikidata mostly just says "forward"). Used for the auction's W/ST split.
 WINGERS = set("""Q615 Q11571 Q142794 Q21621995 Q39444 Q1354960 Q113704154 Q184586 Q214204 Q209942 Q1918 Q164521
@@ -260,9 +258,7 @@ def build(list_only=False):
             if not ce:
                 continue
             cname = lab(ce, "en")
-            if NATIONAL_TYPES & set(ids_of(ce, "P31")):
-                continue
-            if not cname or "national" in cname.lower() or "olympic" in cname.lower() or " U-" in cname or " U2" in cname or " U1" in cname:
+            if not cname or "national" in cname.lower() or " U-" in cname or " U2" in cname or " U1" in cname:
                 continue
             if cname.endswith((" B", " C", " Atlètic", " Castilla", " U19", " U21", " U23")) or any(w in cname for w in YOUTH_WORDS) or " II" in cname or "Reserves" in cname or "Youth" in cname or "Primavera" in cname:
                 continue
