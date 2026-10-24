@@ -240,3 +240,13 @@ textarea { font: inherit; padding: 9px 12px; border-radius: 10px; border: 1px so
   border: 12px solid transparent; border-right-color: var(--accent); border-left: 0;
 }
 @media (max-width: 760px) { .mascot { height: 220px; } .bubble { font-size: 1.2rem; padding: 10px 14px; } }
+
+/* compact header on phones */
+@media (max-width: 520px) {
+  .top { padding: 8px 12px; }
+  .brand { font-size: 0.95rem; gap: 8px; line-height: 1.2; }
+  .logo { width: 38px; height: 38px; }
+  .top-right { gap: 6px; font-size: 0.85rem; }
+  .top-right .link { white-space: nowrap; padding: 2px; }
+  .lang { padding: 4px 8px; }
+}
