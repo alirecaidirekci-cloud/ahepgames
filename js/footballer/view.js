@@ -7,6 +7,7 @@ import * as data from "./data.js";
 import * as logic from "./logic.js";
 
 export const MAX_PLAYERS = logic.MAX_PLAYERS;
+export const icon = "🕵️";
 export const prepare = () => data.loadData();
 export const reduce = (room, a, me, now) => logic.reduce(room, a, me, now, data);
 export const needsTick = (room, now) => room.status === "playing" && now >= room.deadline;

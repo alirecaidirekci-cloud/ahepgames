@@ -4,8 +4,9 @@ import { t, getLang, setLang } from "./i18n.js";
 import { html, render, nothing, nameKey, validName, createRoom, joinRoom, leaveRoom, watchRooms, roomPlayers } from "./lib.js";
 import * as footballer from "./footballer/view.js";
 import * as trivia from "./trivia/view.js";
+import * as academic from "./academic/view.js";
 
-const GAMES = { footballer, trivia };
+const GAMES = { footballer, trivia, academic };
 
 // Local demo mode keeps the user per tab so several tabs can be different players.
 const store = isLocal ? sessionStorage : localStorage;
@@ -56,6 +57,8 @@ async function onRoute() {
   if (!state.me) return rerender();
   if (!game) {
     unsub.push(db.on("scores", (s) => ((state.leaderboard = s || {}), rerender())));
+  } else if (GAMES[game]?.pages?.[code]) {
+    unsub.push(...(GAMES[game].pages[code].enter?.() || []));
   } else if (GAMES[game] && !code) {
     unsub.push(watchRooms(game, (list) => ((state.rooms = list), rerender())));
   } else if (GAMES[game] && code) {
@@ -114,6 +117,7 @@ function body() {
   if (!game) return homeView();
   if (!GAMES[game]) return html`<p>404 · <a href="#/">${t("back")}</a></p>`;
   if (!code) return roomListView(game);
+  if (GAMES[game].pages?.[code]) return GAMES[game].pages[code].view();
   if (!state.room) return html`<p>${state.error || "…"}</p><a href="#/${game}">${t("back")}</a>`;
   return GAMES[game].view();
 }
@@ -131,11 +135,12 @@ function loginView() {
 }
 
 function homeView() {
+  const games = Object.keys(GAMES);
   const rows = Object.entries(state.leaderboard || {}).map(([key, s]) => {
-    const name = s.footballer?.name || s.trivia?.name || key;
-    const f = s.footballer?.points || 0;
-    const tr = s.trivia?.points || 0;
-    return { key, name, f, tr, total: f + tr, wins: (s.footballer?.wins || 0) + (s.trivia?.wins || 0) };
+    const name = games.map((g) => s[g]?.name).find(Boolean) || key;
+    const pts = games.map((g) => s[g]?.points || 0);
+    const wins = games.reduce((sum, g) => sum + (s[g]?.wins || 0), 0);
+    return { key, name, pts, total: pts.reduce((a, b) => a + b, 0), wins };
   });
   rows.sort((a, b) => b.total - a.total);
   return html`
@@ -143,7 +148,7 @@ function homeView() {
     <div class="games">
       ${Object.keys(GAMES).map(
         (g) => html`<a class="card game" href="#/${g}">
-          <div class="game-icon">${g === "footballer" ? "🕵️" : "🧠"}</div>
+          <div class="game-icon">${GAMES[g].icon}</div>
           <h3>${t(g)}</h3>
           <p>${t(g + "Desc")}</p>
           <p class="info">${t(g + "Info", GAMES[g].info())}</p>
@@ -153,11 +158,11 @@ function homeView() {
     <h2>🏆 ${t("leaderboard")}</h2>
     ${rows.length
       ? html`<table class="board">
-          <thead><tr><th>#</th><th>${t("player")}</th><th>${t("footballer")}</th><th>${t("trivia")}</th><th>${t("wins")}</th><th>${t("total")}</th></tr></thead>
+          <thead><tr><th>#</th><th>${t("player")}</th>${games.map((g) => html`<th class="game-col">${t(g)}</th>`)}<th>${t("wins")}</th><th>${t("total")}</th></tr></thead>
           <tbody>
             ${rows.map(
               (r, i) => html`<tr class=${r.key === state.me.key ? "mine" : ""}>
-                <td>${i + 1}</td><td>${r.name}</td><td>${r.f}</td><td>${r.tr}</td><td>${r.wins}</td><td><b>${r.total}</b></td>
+                <td>${i + 1}</td><td>${r.name}</td>${r.pts.map((p) => html`<td class="game-col">${p}</td>`)}<td>${r.wins}</td><td><b>${r.total}</b></td>
               </tr>`
             )}
           </tbody>
@@ -180,6 +185,7 @@ function roomListView(game) {
     <h2>${t(game)}</h2>
     <p class="hint">${t(game + "Desc")}</p>
     <p class="info">${t(game + "Info", mod.info())}</p>
+    ${mod.lobbyExtra?.() || nothing}
     <div class="row">
       <button class="primary" @click=${create}>＋ ${t("createRoom")}</button>
       <form class="row" @submit=${(e) => (e.preventDefault(), join(new FormData(e.target).get("code")))}>

@@ -174,5 +174,17 @@ input, select {
 
 @media (max-width: 760px) {
   .cols, .teams, .answers { grid-template-columns: 1fr; }
-  .board th:nth-child(3), .board td:nth-child(3), .board th:nth-child(4), .board td:nth-child(4) { display: none; }
+  .board .game-col { display: none; }
 }
+
+/* academic quiz */
+.answer.my-vote { outline: 3px solid var(--accent); }
+.team h4 { margin: 12px 0 6px; font-size: 0.9rem; }
+.bank-item { border-bottom: 1px solid var(--line); padding: 8px 0; }
+.bank-item p { margin: 2px 0; }
+.add-form { display: flex; flex-direction: column; gap: 10px; }
+.two-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+fieldset { border: 1px solid var(--line); border-radius: 10px; display: flex; flex-direction: column; gap: 6px; padding: 10px; margin: 0; min-width: 0; }
+legend { font-weight: 600; padding: 0 4px; }
+textarea { font: inherit; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); resize: vertical; }
+@media (max-width: 760px) { .two-cols { grid-template-columns: 1fr; } }

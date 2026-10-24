@@ -27,12 +27,13 @@ function fixCaptains(room) {
   }
 }
 
-function startQuestion(room, idx, now) {
+export function startQuestion(room, idx, now) {
   room.idx = idx;
   room.turn = firstTeam(room, idx);
   room.phase = "answer";
   room.deadline = now + ANSWER_MS;
   room.suggest = null;
+  room.votes = null;
   room.wrongChoice = null;
   room.last = null;
   return room;
@@ -43,11 +44,12 @@ function reveal(room, now, last) {
   room.deadline = now + REVEAL_MS;
   room.last = { ...last, pts: questionPoints(room.questions[room.idx]) };
   room.suggest = null;
+  room.votes = null;
   if (last.team) room.scores[last.team] = (room.scores[last.team] || 0) + room.last.pts;
   return room;
 }
 
-function next(room, now) {
+export function next(room, now) {
   const done = room.idx + 1;
   const { A, B } = room.scores;
   if ((done >= QUESTIONS && A !== B) || done >= room.questions.length) return finish(room, now);
@@ -66,6 +68,23 @@ function finish(room, now) {
   }
   room.result = { winner, points };
   return room;
+}
+
+// Submits the active team's answer (choice may be null for "no answer"):
+// right -> reveal with points; wrong in the first turn -> steal chance; wrong steal -> reveal.
+export function submitAnswer(room, choice, now) {
+  const team = activeTeam(room);
+  if (choice !== null && choice === room.questions[room.idx].correct)
+    return reveal(room, now, { team, choice, stolen: room.phase === "steal" });
+  if (room.phase === "answer") {
+    room.phase = "steal";
+    room.wrongChoice = choice;
+    room.deadline = now + STEAL_MS;
+    room.suggest = null;
+    room.votes = null;
+    return room;
+  }
+  return reveal(room, now, { team: null, choice });
 }
 
 export function reduce(room, a, me, now) {
@@ -112,27 +131,12 @@ export function reduce(room, a, me, now) {
       const team = activeTeam(room);
       if (room.captains[team] !== me) return undefined;
       if (room.phase === "steal" && a.choice === room.wrongChoice) return undefined;
-      const correct = a.choice === room.questions[room.idx].correct;
-      if (correct) return reveal(room, now, { team, choice: a.choice, stolen: room.phase === "steal" });
-      if (room.phase === "answer") {
-        room.phase = "steal";
-        room.wrongChoice = a.choice;
-        room.deadline = now + STEAL_MS;
-        room.suggest = null;
-        return room;
-      }
-      return reveal(room, now, { team: null, choice: a.choice });
+      return submitAnswer(room, a.choice, now);
     }
     case "tick":
       if (!playing || now < room.deadline) return undefined;
       if (room.phase === "coin") return startQuestion(room, 0, now);
-      if (room.phase === "answer") {
-        room.phase = "steal";
-        room.deadline = now + STEAL_MS;
-        room.suggest = null;
-        return room;
-      }
-      if (room.phase === "steal") return reveal(room, now, { team: null });
+      if (room.phase === "answer" || room.phase === "steal") return submitAnswer(room, null, now);
       if (room.phase === "reveal") return next(room, now);
       return undefined;
     default:

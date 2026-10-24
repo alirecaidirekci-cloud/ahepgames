@@ -7,6 +7,7 @@ import * as logic from "./logic.js";
 import { CATEGORIES, loadQuestions, poolSize } from "./questions.js";
 
 export const MAX_PLAYERS = logic.MAX_PLAYERS;
+export const icon = "🧠";
 export const reduce = logic.reduce;
 export const needsTick = (room, now) => room.status === "playing" && now >= room.deadline;
 export const newRoomFields = () => ({ cats: [9, 21] });

@@ -13,6 +13,21 @@
         ".write": "auth != null"
       }
     },
+    "academic": {
+      ".read": "auth != null",
+      "questions": {
+        "$q": {
+          ".write": "auth != null",
+          ".validate": "!newData.exists() || (newData.child('s').isString() && newData.child('diff').isString())"
+        }
+      },
+      "reports": {
+        "$q": { ".write": "auth != null" }
+      },
+      "hidden": {
+        "$q": { ".write": "auth != null" }
+      }
+    },
     "rooms": {
       "$game": {
         ".read": "auth != null",

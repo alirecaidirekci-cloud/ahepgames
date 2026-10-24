@@ -84,6 +84,18 @@ py scripts/build_players.py build
 Appearance tags (hair, beard, skin tone), World Cup winners and missing positions are in
 `scripts/appearance.txt`. Fix any mistakes there, then run `build` again.
 
+**Academic Quiz / Akademik Bilgi Yarışması** (2 teams, at least 2 players each)
+- 420 built-in university-level questions (Turkish and English, 4 options each), 60 per department:
+  Business Administration, International Trade & Logistics, Tourism Management, Communication,
+  Economics, Statistics and Econometrics (`data/academic/*.json`).
+- Each team picks at least 3 departments. On a team's turn the question comes from its own
+  departments; the other team can steal it.
+- No captain: every member votes. More than half of the team's votes (or everyone voting) locks the
+  answer; when time runs out the most-voted answer counts, and on a tie the one that got there first wins.
+- Same timing, steals, difficulty points (1/2/3) and sudden death as Team Trivia.
+- Question bank page (`#/academic/bank`): anyone can add questions; players can report a question
+  during a game; admins listed in `js/admins.js` can hide reported questions or delete added ones.
+
 ## Known limits
 - No passwords, so anyone could log in with someone else's username. Fine among friends.
 - Scores are computed in the browser, so a tech-savvy friend could cheat.
