@@ -67,7 +67,7 @@ function localBackend() {
     }
   };
   const save = (root) => {
-    localStorage.setItem(KEY, JSON.stringify(root));
+    localStorage.setItem(KEY, JSON.stringify(prune(root) ?? {}));
     notify();
   };
   const notify = () => {
@@ -111,6 +111,25 @@ function localBackend() {
       return () => listeners.delete(l);
     },
   };
+}
+
+// Firebase does not store null values or empty objects/arrays; demo mode drops them the same way
+// so the games behave identically in both modes.
+function prune(v) {
+  if (v === null || v === undefined) return undefined;
+  if (Array.isArray(v)) {
+    const a = v.map(prune).filter((x) => x !== undefined);
+    return a.length ? a : undefined;
+  }
+  if (typeof v === "object") {
+    const o = {};
+    for (const [k, x] of Object.entries(v)) {
+      const p = prune(x);
+      if (p !== undefined) o[k] = p;
+    }
+    return Object.keys(o).length ? o : undefined;
+  }
+  return v;
 }
 
 const parts = (p) => p.split("/").filter(Boolean);

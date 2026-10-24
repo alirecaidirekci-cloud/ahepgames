@@ -9,6 +9,11 @@ import * as teamnation from "./teamnation/view.js";
 import * as auction from "./auction/view.js";
 
 const GAMES = { footballer, trivia, academic, teamnation, auction };
+// Home page rows: football games and quiz games.
+const GAME_GROUPS = [
+  ["footballGames", ["footballer", "teamnation", "auction"]],
+  ["quizGames", ["trivia", "academic"]],
+];
 
 // Local demo mode keeps the user per tab so several tabs can be different players.
 const store = isLocal ? sessionStorage : localStorage;
@@ -146,17 +151,19 @@ function homeView() {
   });
   rows.sort((a, b) => b.total - a.total);
   return html`
-    <h2>${t("games")}</h2>
-    <div class="games">
-      ${Object.keys(GAMES).map(
-        (g) => html`<a class="card game" href="#/${g}">
-          <div class="game-icon">${GAMES[g].icon}</div>
-          <h3>${t(g)}</h3>
-          <p>${t(g + "Desc")}</p>
-          <p class="info">${t(g + "Info", GAMES[g].info())}</p>
-        </a>`
-      )}
-    </div>
+    ${GAME_GROUPS.map(
+      ([title, keys]) => html`<h2>${t(title)}</h2>
+        <div class="games games-${keys.length}">
+          ${keys.map(
+            (g) => html`<a class="card game" href="#/${g}">
+              <div class="game-icon">${GAMES[g].icon}</div>
+              <h3>${t(g)}</h3>
+              <p>${t(g + "Desc")}</p>
+              <p class="info">${t(g + "Info", GAMES[g].info())}</p>
+            </a>`
+          )}
+        </div>`
+    )}
     <h2>🏆 ${t("leaderboard")}</h2>
     ${rows.length
       ? html`<table class="board">

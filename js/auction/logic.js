@@ -23,6 +23,7 @@ function assign(room, now, winner, price) {
   const pos = POSITIONS[room.idx];
   const [shown, hidden] = room.pairs[pos];
   const loser = opponent(room, winner);
+  room.squads = room.squads || {}; // the database drops the empty object set at start
   room.budgets[winner] -= price;
   room.squads[winner] = { ...(room.squads[winner] || {}), [pos]: { id: shown, price } };
   room.squads[loser] = { ...(room.squads[loser] || {}), [pos]: { id: hidden, price: 0 } };
