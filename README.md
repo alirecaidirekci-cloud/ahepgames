@@ -44,6 +44,11 @@ everything is stored in this browser, and each tab can log in as a different pla
 
 Share the link with your friends. 🎉
 
+## Online players & invites
+The home page lists who is online right now and where they are. Inside a room the host has an
+**Invite players / Oyuncu davet et** panel: online players get a pop-up and join with one tap
+(or watch, if the game already started). There is also a button to copy the room link.
+
 ## Watching games
 Anyone can watch a room with the **Watch / İzle** button, also while a game is running. Spectators
 never see secret information: the secret footballer (until the end), teams' suggestions and votes,

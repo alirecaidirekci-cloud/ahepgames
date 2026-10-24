@@ -12,7 +12,7 @@ const GAMES = { footballer, trivia, academic, teamnation, auction };
 
 // Set by scripts/release.py. If version.json on the server is newer, this browser still runs
 // cached old files: re-download them and reload once.
-export const APP_VERSION = "20261024-130653";
+export const APP_VERSION = "20261024-133542";
 async function updateIfNeeded() {
   try {
     const info = await (await fetch("version.json", { cache: "no-store" })).json();
@@ -41,6 +41,8 @@ export const state = {
   room: null,
   leaderboard: null,
   ui: {}, // per-screen UI state (filters, dialogs, ...)
+  users: {}, // everyone's name + last activity (for the online list and invites)
+  invite: null, // an invitation to a room for me
   error: "",
 };
 
@@ -72,6 +74,127 @@ function go(hash) {
   location.hash = hash;
 }
 
+// ---------- online players & invites ----------
+// Each logged-in browser writes users/<me>/lastActive (+ where it is) every 30 seconds.
+// Someone counts as online if they were active in the last 75 seconds.
+// Invites are stored in users/<invited>/invite = {from, fromName, game, code, t}.
+const ONLINE_MS = 75 * 1000;
+const INVITE_MS = 3 * 60 * 1000;
+const isOnline = (u) => !!u?.lastActive && db.now() - u.lastActive < ONLINE_MS;
+
+function heartbeat() {
+  if (!state.me) return;
+  db.update(`users/${state.me.key}`, { name: state.me.name, lastActive: db.now(), where: state.route.slice(0, 2).join("/") });
+}
+setInterval(heartbeat, 30 * 1000);
+window.addEventListener("pagehide", () => state.me && db.update(`users/${state.me.key}`, { lastActive: 0 }));
+
+let presenceOff = [];
+function watchPresence() {
+  presenceOff.forEach((off) => off());
+  presenceOff = [];
+  if (!state.me) return;
+  presenceOff.push(db.on("users", (u) => ((state.users = u || {}), rerender())));
+  presenceOff.push(
+    db.on(`users/${state.me.key}/invite`, (inv) => {
+      state.invite = inv && db.now() - inv.t < INVITE_MS ? inv : null;
+      rerender();
+    })
+  );
+}
+
+export function onlineUsers() {
+  return Object.entries(state.users)
+    .filter(([, u]) => isOnline(u))
+    .map(([key, u]) => ({ key, ...u }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Where someone is, in words: home page, a game's room list, or a room.
+function whereText(where) {
+  const [game, code] = (where || "").split("/");
+  if (!game || !GAMES[game]) return t("whereHome");
+  if (!code || GAMES[game].pages?.[code]) return t(game);
+  return `${t(game)} · ${code}`;
+}
+
+async function sendInvite(key) {
+  const [game, code] = state.route;
+  await db.update(`users/${key}`, { invite: { from: state.me.key, fromName: state.me.name, game, code, t: db.now() } });
+  setUi({ invited: { ...(state.ui.invited || {}), [key]: true } });
+}
+
+async function answerInvite(accept) {
+  const inv = state.invite;
+  state.invite = null;
+  await db.set(`users/${state.me.key}/invite`, null);
+  if (!accept || !inv) return rerender();
+  const room = await db.get(`rooms/${inv.game}/${inv.code}`);
+  if (!room) return ((state.error = t("roomNotFound")), rerender());
+  const mod = GAMES[inv.game];
+  const joined = room.status === "lobby" && (await joinRoom(inv.game, inv.code, state.me, mod.MAX_PLAYERS, mod.joinFields?.() || {})) === "ok";
+  if (!joined) await spectateRoom(inv.game, inv.code, state.me);
+  go(`#/${inv.game}/${inv.code}`);
+}
+
+function inviteBanner() {
+  const inv = state.invite;
+  if (!inv || !state.me || (state.route[0] === inv.game && state.route[1] === inv.code)) return nothing;
+  return html`<div class="invite-banner">
+    <span>📨 ${t("inviteFrom", { name: inv.fromName, game: t(inv.game), code: inv.code })}</span>
+    <span class="row">
+      <button class="primary small" @click=${() => answerInvite(true)}>${t("acceptInvite")}</button>
+      <button class="small" @click=${() => answerInvite(false)}>${t("dismiss")}</button>
+    </span>
+  </div>`;
+}
+
+function onlineSection() {
+  const list = onlineUsers();
+  return html`<h2>🟢 ${t("onlineNow")} (${list.length})</h2>
+    <div class="online-list">
+      ${list.map(
+        (u) => html`<div class="online-user ${u.key === state.me.key ? "mine" : ""}">
+          <span class="dot"></span><b>${u.name}</b><small>${whereText(u.where)}</small>
+        </div>`
+      )}
+    </div>`;
+}
+
+// Host's invite panel inside a room: online players who are not in the room yet.
+function invitePanel(room, game) {
+  const inRoom = (k) => room.players?.[k] || room.spectators?.[k];
+  const list = onlineUsers().filter((u) => !inRoom(u.key));
+  const link = `${location.origin}${location.pathname}#/${game}/${room.code}`;
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      setUi({ copied: true });
+    } catch {
+      setUi({ copied: false, showLink: true });
+    }
+  };
+  return html`<details class="card invite-panel" ?open=${state.ui.inviteOpen} @toggle=${(e) => (state.ui.inviteOpen = e.target.open)}>
+    <summary>➕ ${t("invitePlayers")} <small>(${list.length} ${t("onlineShort")})</small></summary>
+    ${list.length
+      ? html`<div class="online-list">
+          ${list.map(
+            (u) => html`<div class="online-user">
+              <span class="dot"></span><b>${u.name}</b><small>${whereText(u.where)}</small>
+              <button class="small primary" ?disabled=${state.ui.invited?.[u.key]} @click=${() => sendInvite(u.key)}>
+                ${state.ui.invited?.[u.key] ? t("invited") : t("invite")}
+              </button>
+            </div>`
+          )}
+        </div>`
+      : html`<p class="hint">${t("nobodyOnline")}</p>`}
+    <div class="row">
+      <button class="small" @click=${copy}>🔗 ${state.ui.copied ? t("linkCopied") : t("copyLink")}</button>
+      ${state.ui.showLink ? html`<input class="link-box" readonly .value=${link} @focus=${(e) => e.target.select()} />` : nothing}
+    </div>
+  </details>`;
+}
+
 async function onRoute() {
   unsub.forEach((u) => u());
   unsub = [];
@@ -82,6 +205,7 @@ async function onRoute() {
   state.error = "";
   const [game, code] = state.route;
   if (!state.me) return rerender();
+  heartbeat();
   if (!game) {
     updateIfNeeded();
     unsub.push(db.on("scores", (s) => ((state.leaderboard = s || {}), rerender())));
@@ -129,6 +253,7 @@ async function login(e) {
   store.setItem("fg-user", JSON.stringify(state.me));
   state.error = "";
   showWelcome();
+  watchPresence();
   onRoute();
 }
 
@@ -152,8 +277,10 @@ function welcomeScreen() {
 }
 
 function logout() {
+  if (state.me) db.update(`users/${state.me.key}`, { lastActive: 0 });
   store.removeItem("fg-user");
   state.me = null;
+  watchPresence(); // stops listening for the old user's invites
   go("#/");
   onRoute();
 }
@@ -171,7 +298,7 @@ function shell() {
     </header>
     ${isLocal ? html`<div class="banner">${t("localMode")}</div>` : nothing}
     <main>${body()}</main>
-    ${confirmDialog()} ${welcomeScreen()}
+    ${inviteBanner()} ${confirmDialog()} ${welcomeScreen()}
   `;
 }
 
@@ -221,6 +348,7 @@ function homeView() {
           )}
         </div>`
     )}
+    ${onlineSection()}
     <h2>🏆 ${t("leaderboard")}</h2>
     ${rows.length
       ? html`<table class="board">
@@ -313,7 +441,8 @@ export function roomHeader(game) {
         </p>`
       : nothing}
     ${watchers.length ? html`<p class="hint">👀 ${t("watchers", { names: watchers.join(", ") })}</p>` : nothing}
-    ${state.error ? html`<p class="error">${state.error}</p>` : nothing}`;
+    ${state.error ? html`<p class="error">${state.error}</p>` : nothing}
+    ${room.host === state.me.key && room.status !== "ended" ? invitePanel(room, game) : nothing}`;
 }
 
 // Confirmation dialog: setUi({confirm: {text, yes: fn}})
@@ -352,6 +481,7 @@ setInterval(() => {
     state.me = JSON.parse(store.getItem("fg-user"));
   } catch {}
   root.textContent = "";
+  watchPresence();
   window.addEventListener("hashchange", onRoute);
   onRoute();
 })();

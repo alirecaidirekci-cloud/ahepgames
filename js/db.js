@@ -105,9 +105,14 @@ function localBackend() {
     on: (p, cb) => {
       const l = { path: p, cb, last: undefined };
       listeners.add(l);
-      const v = getIn(load(), p);
-      l.last = JSON.stringify(v);
-      setTimeout(() => cb(clone(v)));
+      l.last = JSON.stringify(getIn(load(), p));
+      // Deliver the value as it is when the callback runs (it may have changed in between).
+      setTimeout(() => {
+        if (!listeners.has(l)) return;
+        const v = getIn(load(), p);
+        l.last = JSON.stringify(v);
+        cb(clone(v));
+      });
       return () => listeners.delete(l);
     },
   };

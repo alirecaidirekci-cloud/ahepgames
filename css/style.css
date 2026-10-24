@@ -292,3 +292,19 @@ textarea { font: inherit; padding: 9px 12px; border-radius: 10px; border: 1px so
   .auc-buttons button { padding: 11px 0; }
   .auc .card { padding: 10px; }
 }
+
+/* online players & invites */
+.online-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.online-user { display: flex; align-items: center; gap: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 99px; padding: 5px 12px; }
+.online-user.mine { border-color: var(--accent); }
+.online-user small { color: var(--muted); font-size: 0.75rem; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--yes); box-shadow: 0 0 0 3px rgba(26, 158, 90, 0.2); }
+.invite-panel summary { cursor: pointer; font-weight: 700; }
+.invite-panel[open] summary { margin-bottom: 10px; }
+.invite-panel summary small { color: var(--muted); font-weight: 400; }
+.link-box { flex: 1; min-width: 0; font-size: 0.8rem; }
+.invite-banner {
+  position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 25; width: min(560px, calc(100% - 24px));
+  background: var(--card); border: 2px solid var(--accent); border-radius: 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  padding: 12px 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; font-weight: 600;
+}
