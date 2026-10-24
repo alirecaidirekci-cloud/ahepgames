@@ -188,3 +188,31 @@ fieldset { border: 1px solid var(--line); border-radius: 10px; display: flex; fl
 legend { font-weight: 600; padding: 0 4px; }
 textarea { font: inherit; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); resize: vertical; }
 @media (max-width: 760px) { .two-cols { grid-template-columns: 1fr; } }
+
+/* team & nation guess */
+.picks { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pick-card { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0; text-align: center; }
+.pick-card b { font-size: 1.15rem; }
+.option-list { max-height: 260px; overflow-y: auto; margin-top: 8px; }
+.admin-box { border: 2px solid var(--gold); border-radius: 12px; padding: 12px; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.admin-box h4 { margin: 0; }
+
+/* transfer auction */
+.progress { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 12px; }
+.pill.done { opacity: 0.55; }
+.auction-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr) 220px; gap: 14px; align-items: start; }
+.auction-layout.two { grid-template-columns: 1fr 1fr; }
+.auction-center h3 { text-align: center; }
+.auction-stage { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.auction-card { width: 170px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.auction-card img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; object-position: top; border-radius: 10px; background: var(--line); }
+.hidden-card .mystery { width: 100%; aspect-ratio: 3 / 4; border-radius: 10px; background: var(--bg); border: 2px dashed var(--line); display: grid; place-items: center; font-size: 4rem; color: var(--muted); }
+.bid-box { text-align: center; margin-top: 12px; }
+.center-row { justify-content: center; }
+.bid-input { width: 80px; }
+.budget { font-size: 1.3rem; font-weight: 700; margin: 0 0 8px; }
+.squad-list { list-style: none; padding: 0; margin: 0; }
+.squad-list li { display: grid; grid-template-columns: 1fr; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.squad-list li span { font-size: 0.8rem; color: var(--muted); }
+.squad-list small { color: var(--muted); }
+@media (max-width: 860px) { .auction-layout, .auction-layout.two { grid-template-columns: 1fr; } }

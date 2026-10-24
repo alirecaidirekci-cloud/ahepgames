@@ -5,8 +5,10 @@ import { html, render, nothing, nameKey, validName, createRoom, joinRoom, leaveR
 import * as footballer from "./footballer/view.js";
 import * as trivia from "./trivia/view.js";
 import * as academic from "./academic/view.js";
+import * as teamnation from "./teamnation/view.js";
+import * as auction from "./auction/view.js";
 
-const GAMES = { footballer, trivia, academic };
+const GAMES = { footballer, trivia, academic, teamnation, auction };
 
 // Local demo mode keeps the user per tab so several tabs can be different players.
 const store = isLocal ? sessionStorage : localStorage;
@@ -135,7 +137,7 @@ function loginView() {
 }
 
 function homeView() {
-  const games = Object.keys(GAMES);
+  const games = Object.keys(GAMES).filter((g) => !GAMES[g].noScores);
   const rows = Object.entries(state.leaderboard || {}).map(([key, s]) => {
     const name = games.map((g) => s[g]?.name).find(Boolean) || key;
     const pts = games.map((g) => s[g]?.points || 0);

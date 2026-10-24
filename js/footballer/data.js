@@ -17,6 +17,8 @@ export async function loadData() {
 
 export const players = () => DATA.players;
 export const playerById = (id) => DATA.byId[id];
+export const clubs = () => DATA.clubs;
+export const countries = () => DATA.countries;
 export const questions = () => QUESTIONS;
 export const questionById = (id) => QUESTIONS.byId[id];
 export const countryName = (id) => DATA.countries[id]?.[getLang()] || DATA.countries[id]?.en || id;

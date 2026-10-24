@@ -182,6 +182,20 @@ FORMER_TOP_FLIGHT = {
 }
 
 
+# Duplicate Wikidata entries for the same club (e.g. multi-sport club vs football club) -> one id.
+CLUB_MERGE = {"Q19648": "Q6601875", "Q43134": "Q495299", "Q950835": "Q7156"}
+YOUTH_WORDS = ("Juvenil", "Junior", "Academy", "Under-2", "Under-1", " A2", "-2 ")
+
+# Wingers (hand-picked; Wikidata mostly just says "forward"). Used for the auction's W/ST split.
+WINGERS = set("""Q615 Q11571 Q142794 Q21621995 Q39444 Q1354960 Q113704154 Q184586 Q214204 Q209942 Q1918 Q164521
+Q20851003 Q22951255 Q251683 Q28973866 Q483145 Q180642 Q439722 Q8338725 Q58441 Q312157 Q180553 Q482947 Q161054
+Q59306386 Q252190 Q1894 Q58377 Q44297797 Q29516 Q61780902 Q174486 Q188241 Q66743376 Q10560 Q73480 Q311511
+Q246417 Q16499882 Q5981954 Q30148558 Q30055335 Q42728914 Q62050484 Q179773 Q16148978 Q26704703 Q28531111
+Q28861547 Q1913 Q12984 Q47950 Q6413296 Q16056053 Q104414736 Q22007007 Q19613570 Q97725322 Q313145 Q107352615
+Q61655 Q2505360 Q787409 Q60836 Q15613741 Q109282705 Q202237 Q187125 Q186691 Q2091463 Q368441 Q311872 Q168740
+Q19518278 Q43913 Q10524 Q352815 Q487459""".split())
+
+
 def by_rank(ent, prop):
     cs = [c for c in ent["claims"].get(prop, []) if c["mainsnak"].get("datavalue") and c.get("rank") != "deprecated"]
     cs.sort(key=lambda c: c.get("rank") != "preferred")
@@ -239,14 +253,14 @@ def build(list_only=False):
             dv = c["mainsnak"].get("datavalue")
             if not dv:
                 continue
-            cid = dv["value"]["id"]
+            cid = CLUB_MERGE.get(dv["value"]["id"], dv["value"]["id"])
             ce = C.get(cid)
             if not ce:
                 continue
             cname = lab(ce, "en")
             if not cname or "national" in cname.lower() or " U-" in cname or " U2" in cname or " U1" in cname:
                 continue
-            if cname.endswith((" B", " C", " Atlètic", " Castilla", " U19", " U21", " U23")) or " II" in cname or "Reserves" in cname or "Youth" in cname or "Primavera" in cname:
+            if cname.endswith((" B", " C", " Atlètic", " Castilla", " U19", " U21", " U23")) or any(w in cname for w in YOUTH_WORDS) or " II" in cname or "Reserves" in cname or "Youth" in cname or "Primavera" in cname:
                 continue
             if "P582" not in c.get("qualifiers", {}):
                 active = True
@@ -312,11 +326,14 @@ def build(list_only=False):
     out_players = []
     for p in chosen:
         a = p.pop("app") or []
-        p.pop("links")
+        p["fame"] = p.pop("links")
         hair, beard, skin, wc, pos = (a + ["", "", "", "", ""])[:5]
         if pos and not p["pos"]:
             p["pos"] = [pos]
         p.update({"hair": hair or None, "beard": beard == "1", "skin": skin or None, "wc": wc == "1"})
+        # Single main role for the auction: GK, DF, MF, W (winger) or ST (striker).
+        first = p["pos"][0] if p["pos"] else "MF"
+        p["role"] = "W" if p["id"] in WINGERS else "ST" if first == "FW" else first
         out_players.append(p)
     os.makedirs(os.path.join(ROOT, "data"), exist_ok=True)
     with open(os.path.join(ROOT, "data", "players.json"), "w", encoding="utf-8") as f:

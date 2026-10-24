@@ -1,6 +1,7 @@
 # AHEP Games - Cadalozlar ⚽🧠
 
-Multiplayer games for friends: **Guess the Footballer** and **Team Trivia**.
+Multiplayer games for friends: **Guess the Footballer**, **Team Trivia**, **Academic Quiz**,
+**Team & Nation Guess** and **Transfer Auction**.
 Users only pick a username (no password); points are stored per user per game.
 
 - Hosting: GitHub Pages (free)
@@ -95,6 +96,23 @@ Appearance tags (hair, beard, skin tone), World Cup winners and missing position
 - Same timing, steals, difficulty points (1/2/3) and sudden death as Team Trivia.
 - Question bank page (`#/academic/bank`): anyone can add questions; players can report a question
   during a game; admins listed in `js/admins.js` can hide reported questions or delete added ones.
+
+**Team & Nation Guess / Takım & Milli Takım Tahmini** (2 players + 1 game admin)
+- The host makes one person the game admin and two people players (others can watch).
+- Each round both players pick a club or a nation from a list (at least one club; anything picked
+  once can't be picked again). A coin flip decides who picks first; this alternates every round.
+- Players say out loud a footballer who fits both picks. The game admin sees the matching players
+  from our database (correct players outside it also count) and clicks who said it first.
+- 60 seconds per round; the admin can also end a round with "No valid player". First to 3 wins (+100 pts).
+
+**Transfer Auction / Transfer Açık Artırması** (2 players, no points)
+- Each player has €20. Positions come in order: goalkeeper, defender, midfielder, winger, striker.
+- For each position one footballer is shown and one is hidden: one is a top player, the other a
+  moderate one (by fame), in random order.
+- Open auction on the shown player: it opens at €1 (the opener alternates), bids are whole euros,
+  and the 10-second timer restarts after each bid. The highest bidder pays and gets the shown player;
+  the other player gets the hidden one for free. If only one player has money left, they get the
+  shown player for €1. Both teams always end with 5 players.
 
 ## Known limits
 - No passwords, so anyone could log in with someone else's username. Fine among friends.
