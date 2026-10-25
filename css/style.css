@@ -361,3 +361,14 @@ textarea { font: inherit; padding: 9px 12px; border-radius: 10px; border: 1px so
 .yk-solo p { margin: 4px 0 0; }
 .yk-note { border-left: 4px solid var(--gold); }
 .yk-right { color: var(--yes); font-weight: 600; }
+.yk-stage { display: grid; grid-template-columns: minmax(0, 1fr) 170px; gap: 16px; align-items: start; }
+.yk-main { grid-column: 1; grid-row: 1; min-width: 0; }
+.yk-hoca { grid-column: 2; grid-row: 1; width: 100%; height: auto; position: sticky; top: 16px; }
+@media (max-width: 760px) {
+  /* phones: the figure sits small next to the score, the card uses the full width */
+  .yk-stage { grid-template-columns: minmax(0, 1fr) 64px; gap: 0 8px; align-items: end; }
+  .yk-main { display: contents; }
+  .yk-main > * { grid-column: 1 / -1; }
+  .yk-main > .scorebar { grid-column: 1; grid-row: 1; align-self: center; }
+  .yk-hoca { grid-row: 1; height: 120px; width: 64px; object-fit: contain; position: static; margin-bottom: 6px; }
+}

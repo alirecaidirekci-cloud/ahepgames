@@ -50,10 +50,43 @@ function pickSet(list, n = logic.QUESTIONS) {
   });
 }
 
+// ---------- the "hoca" mascot ----------
+// A short splash with a speech bubble ("N'aber hocalar" when entering the game, another one when a
+// team game starts) and the same figure next to the question card while playing.
+const SPLASH_MS = 2500;
+let splash = null; // {text, leaving}
+function showSplash(text) {
+  const mine = (splash = { text, leaving: false });
+  rerender();
+  setTimeout(() => splash === mine && ((mine.leaving = true), rerender()), SPLASH_MS);
+  setTimeout(() => splash === mine && ((splash = null), rerender()), SPLASH_MS + 500);
+}
+// Greets once each time someone comes into the game from another part of the site.
+let greeted = false;
+window.addEventListener("hashchange", () => {
+  if (!location.hash.startsWith("#/yokak")) greeted = false;
+});
+
+// Rendered by every screen of the game.
+function splashView() {
+  if (!greeted) {
+    greeted = true;
+    setTimeout(() => showSplash("N'aber hocalar!"));
+  }
+  return splash
+    ? html`<div class="welcome-screen ${splash.leaving ? "leaving" : ""}" @click=${() => ((splash = null), rerender())}>
+        <div class="welcome"><img class="mascot" src="img/hoca.png" alt="" /><div class="bubble">${splash.text}</div></div>
+      </div>`
+    : nothing;
+}
+
+// Question screens: the card(s) on the left, the figure on the right (above the card on phones).
+const stage = (content) => html`<div class="yk-stage"><img class="yk-hoca" src="img/hoca.png" alt="" /><div class="yk-main">${content}</div></div>`;
+
 const trOnlyNote = () =>
   getLang() === "tr" ? nothing : html`<p class="card yk-note">🇹🇷 ${t("yokakTrOnly")}</p>`;
 
-export const lobbyExtra = () => html`${trOnlyNote()}
+export const lobbyExtra = () => html`${splashView()} ${trOnlyNote()}
   <div class="card yk-solo">
     <div>
       <b>🧑‍🎓 Tek kişilik alıştırma</b>
@@ -113,7 +146,7 @@ async function newSolo() {
 }
 
 function soloView() {
-  const back = html`<a href="#/yokak" class="back">${t("back")}</a>`;
+  const back = html`${splashView()}<a href="#/yokak" class="back">${t("back")}</a>`;
   if (solo.error) return html`${back}<p class="error">Sorular yüklenemedi. <button class="small" @click=${newSolo}>Tekrar dene</button></p>`;
   if (!solo.set) return html`${back}<p>Sorular yükleniyor…</p>`;
   const total = solo.set.length;
@@ -144,7 +177,7 @@ function soloView() {
   const cls = (i) => (answered && i === entry.c ? "right" : answered && i === pick ? "wrong" : "");
   const message = !answered ? "" : pick === entry.c ? "✅ Doğru!" : "❌ Yanlış.";
   return html`${back}
-    <div class="scorebar"><span>🧑‍🎓 ${state.me.name}</span><b>${score}</b></div>
+    ${stage(html`<div class="scorebar"><span>🧑‍🎓 ${state.me.name}</span><b>${score}</b></div>
     ${questionCard(entry, solo.idx + 1, total, {
       cls,
       onPick: answered ? null : (i) => ((solo.picks[solo.idx] = i), rerender()),
@@ -155,7 +188,7 @@ function soloView() {
       ? html`<div class="row end"><button class="primary" @click=${() => (solo.idx++, rerender(), scrollTo(0, 0))}>
           ${solo.idx + 1 >= total ? "Sonuçları gör" : "Sonraki soru →"}
         </button></div>`
-      : nothing}`;
+      : nothing}`)}`;
 }
 
 export const pages = {
@@ -179,8 +212,17 @@ function sideName(room, team) {
 
 // New players are put into the smaller team automatically (they can still switch in the lobby).
 const assigning = new Set();
+// "All the department heads are here": shown to everyone in the room when a team game starts.
+const teamSplashShown = new Set();
 export function onRoom(room) {
   const me = state.me?.key;
+  if (room?.status === "playing" && room.idx === 0 && room.phase === "question" && !logic.isDuel(room)) {
+    const key = room.code + "/" + room.questions?.[0]?.id;
+    if (!teamSplashShown.has(key)) {
+      teamSplashShown.add(key);
+      showSplash("Ooo bütün bölüm başkanları toplanmış!");
+    }
+  }
   if (!room || room.status !== "lobby" || !room.players?.[me] || room.players[me].team) return;
   if (assigning.has(room.code)) return;
   assigning.add(room.code);
@@ -190,7 +232,7 @@ export function onRoom(room) {
 
 export function view() {
   const room = state.room;
-  return html`${roomHeader("yokak")} ${trOnlyNote()}
+  return html`${splashView()} ${roomHeader("yokak")} ${trOnlyNote()}
     ${room.status === "lobby" ? lobby() : room.status === "playing" ? playing() : ended()}`;
 }
 
@@ -278,7 +320,7 @@ function playing() {
   else if (mine) message = html`${wrongNote}<div>Rakibin cevabı bekleniyor…</div>`;
   else message = html`${wrongNote}<div>İlk doğru cevaplayan puanı alır!</div>`;
   const last = room.idx + 1 >= room.questions.length;
-  return html`${scoreBar(room)}
+  return stage(html`${scoreBar(room)}
     ${questionCard(entry, room.idx + 1, room.questions.length, {
       cls,
       onPick: room.phase === "question" && myTeam && !mine ? (i) => act({ type: "answer", choice: i }) : null,
@@ -287,7 +329,7 @@ function playing() {
     })}
     ${reveal && myTeam
       ? html`<div class="row end"><button class="primary" @click=${() => act({ type: "next" })}>${last ? "Sonuçları gör" : "Sonraki soru →"}</button></div>`
-      : nothing}`;
+      : nothing}`);
 }
 
 function ended() {
