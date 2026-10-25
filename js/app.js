@@ -15,7 +15,7 @@ const GAMES = { footballer, trivia, academic, teamnation, auction, yokak };
 
 // Set by scripts/release.py. If version.json on the server is newer, this browser still runs
 // cached old files: re-download them and reload once.
-export const APP_VERSION = "20261025-125409";
+export const APP_VERSION = "20261025-125634";
 async function updateIfNeeded() {
   try {
     const info = await (await fetch("version.json", { cache: "no-store" })).json();
@@ -28,6 +28,18 @@ async function updateIfNeeded() {
     return false;
   }
 }
+// Pages left open also look for a new version every 2 minutes, but only reload on screens where
+// nothing gets lost: the home page, a game's room list or the tournament list (never inside a
+// room, a solo game or a form), and not while someone is typing or a dialog is open.
+const UPDATE_CHECK_MS = 2 * 60 * 1000;
+function safeToUpdate() {
+  const [first, second] = state.route;
+  if (second || state.ui.confirm || state.welcome) return false;
+  if (first && first !== "tournaments" && !GAMES[first]) return false;
+  return !document.activeElement?.matches?.("input, textarea, select");
+}
+setInterval(() => safeToUpdate() && updateIfNeeded(), UPDATE_CHECK_MS);
+
 // Home page rows: football games, quiz games and special games.
 const GAME_GROUPS = [
   ["footballGames", ["footballer", "teamnation", "auction"]],
@@ -224,6 +236,7 @@ async function onRoute() {
   } else if (GAMES[game]?.pages?.[code]) {
     unsub.push(...(GAMES[game].pages[code].enter?.() || []));
   } else if (GAMES[game] && !code) {
+    updateIfNeeded();
     unsub.push(watchRooms(game, (list) => ((state.rooms = list), rerender())));
   } else if (GAMES[game] && code) {
     await GAMES[game].prepare?.();
