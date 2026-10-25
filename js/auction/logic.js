@@ -50,22 +50,40 @@ function startPosition(room, idx, now) {
   return assign(room, now, Math.random() < 0.5 ? opener : rival, 0);
 }
 
+const validPairs = (pairs) => pairs && POSITIONS.every((p) => pairs[p] && pairs[p].length === 2);
+
+function begin(room, pairs, now) {
+  const ks = bidders(room);
+  room.pairs = pairs;
+  room.status = "playing";
+  room.coin = ks[Math.random() < 0.5 ? 0 : 1];
+  room.budgets = { [ks[0]]: BUDGET, [ks[1]]: BUDGET };
+  room.squads = {};
+  room.phase = "coin";
+  room.idx = 0;
+  room.bid = null;
+  room.last = null;
+  room.endedAt = null;
+  room.deadline = now + COIN_MS;
+  return room;
+}
+
 export function reduce(room, a, me, now) {
   if (!room) return undefined;
   const playing = room.status === "playing";
   switch (a.type) {
     case "start": {
-      if (room.status !== "lobby" || room.host !== me || bidders(room).length !== 2) return undefined;
-      if (!a.pairs || POSITIONS.some((p) => !a.pairs[p] || a.pairs[p].length !== 2)) return undefined;
-      const ks = bidders(room);
-      room.pairs = a.pairs;
-      room.status = "playing";
-      room.coin = ks[Math.random() < 0.5 ? 0 : 1];
-      room.budgets = { [ks[0]]: BUDGET, [ks[1]]: BUDGET };
-      room.squads = {};
-      room.phase = "coin";
-      room.idx = 0;
-      room.deadline = now + COIN_MS;
+      if (room.status !== "lobby" || room.host !== me || bidders(room).length !== 2 || !validPairs(a.pairs)) return undefined;
+      return begin(room, a.pairs, now);
+    }
+    case "replay": {
+      // Either player can start a new auction in the same room with new footballers.
+      // If the other player has left, the room goes back to the lobby to wait for a new opponent.
+      if (room.status !== "ended" || !room.players?.[me]) return undefined;
+      if (bidders(room).length === 2 && validPairs(a.pairs)) return begin(room, a.pairs, now);
+      room.status = "lobby";
+      room.host = me;
+      for (const k of ["pairs", "coin", "budgets", "squads", "phase", "idx", "bid", "last", "deadline", "endedAt"]) room[k] = null;
       return room;
     }
     case "raise": {

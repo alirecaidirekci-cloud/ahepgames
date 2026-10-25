@@ -204,6 +204,9 @@ function ended() {
       <p class="hint">${t("noWinner")}</p>
     </div>
     <div class="card auc-teams">${lineup(a)} ${lineup(b)}</div>
-    <p class="center"><a class="button primary" href="#/auction">${t("playAgain")}</a></p>
+    <p class="center">
+      ${room.players?.[state.me.key] ? html`<button class="primary" @click=${() => act({ type: "replay", pairs: drawPairs() })}>🔁 ${t("replay")}</button>` : nothing}
+      <a class="button" href="#/auction">${t("playAgain")}</a>
+    </p>
   </div>`;
 }

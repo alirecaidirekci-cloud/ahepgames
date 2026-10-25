@@ -169,6 +169,7 @@ const STR = {
     confirm: "Confirm",
     gameOver: "Game over",
     playAgain: "Back to lobby",
+    replay: "Play again",
     pointsWon: "+{n} pts",
     // footballer
     picker: "Picker",
@@ -523,6 +524,7 @@ const STR = {
     confirm: "Onayla",
     gameOver: "Oyun bitti",
     playAgain: "Lobiye dön",
+    replay: "Tekrar oyna",
     pointsWon: "+{n} puan",
     picker: "Seçici",
     makePicker: "Seçici yap",
