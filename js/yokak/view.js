@@ -53,14 +53,19 @@ function pickSet(list, n = logic.QUESTIONS) {
 // ---------- the "hoca" mascot ----------
 // A short splash with a speech bubble ("N'aber hocalar" when entering the game, another one when a
 // team game starts) and the same figure next to the question card while playing.
+// After your own (or your team's) answer a second hoca reacts: happy when right, angry when wrong.
 const SPLASH_MS = 2500;
-let splash = null; // {text, leaving}
-function showSplash(text) {
-  const mine = (splash = { text, leaving: false });
+const REACT_MS = 1800;
+let splash = null; // {text, img, react, leaving}
+function showSplash(text, img = "img/hoca.png", react = false) {
+  const mine = (splash = { text, img, react, leaving: false });
+  const ms = react ? REACT_MS : SPLASH_MS;
   rerender();
-  setTimeout(() => splash === mine && ((mine.leaving = true), rerender()), SPLASH_MS);
-  setTimeout(() => splash === mine && ((splash = null), rerender()), SPLASH_MS + 500);
+  setTimeout(() => splash === mine && ((mine.leaving = true), rerender()), ms);
+  setTimeout(() => splash === mine && ((splash = null), rerender()), ms + 500);
 }
+const react = (right) =>
+  right ? showSplash("Tebrikler hocam!", "img/hoca_happy.png", true) : showSplash("Nasıl, nasıl, nasıl!!", "img/hoca_angry.png", true);
 // Greets once each time someone comes into the game from another part of the site.
 let greeted = false;
 window.addEventListener("hashchange", () => {
@@ -74,8 +79,8 @@ function splashView() {
     setTimeout(() => showSplash("N'aber hocalar!"));
   }
   return splash
-    ? html`<div class="welcome-screen ${splash.leaving ? "leaving" : ""}" @click=${() => ((splash = null), rerender())}>
-        <div class="welcome"><img class="mascot" src="img/hoca.png" alt="" /><div class="bubble">${splash.text}</div></div>
+    ? html`<div class="welcome-screen ${splash.react ? "yk-react" : ""} ${splash.leaving ? "leaving" : ""}" @click=${() => ((splash = null), rerender())}>
+        <div class="welcome"><img class="mascot" src=${splash.img} alt="" /><div class="bubble">${splash.text}</div></div>
       </div>`
     : nothing;
 }
@@ -180,7 +185,7 @@ function soloView() {
     ${stage(html`<div class="scorebar"><span>🧑‍🎓 ${state.me.name}</span><b>${score}</b></div>
     ${questionCard(entry, solo.idx + 1, total, {
       cls,
-      onPick: answered ? null : (i) => ((solo.picks[solo.idx] = i), rerender()),
+      onPick: answered ? null : (i) => ((solo.picks[solo.idx] = i), react(i === entry.c)),
       message,
       reveal: answered,
     })}
@@ -214,8 +219,19 @@ function sideName(room, team) {
 const assigning = new Set();
 // "All the department heads are here": shown to everyone in the room when a team game starts.
 const teamSplashShown = new Set();
+const reacted = new Set(); // questions my side already got a reaction for
 export function onRoom(room) {
   const me = state.me?.key;
+  const myTeam = room?.players?.[me]?.team;
+  if (room?.status === "playing" && myTeam) {
+    const entry = room.questions[room.idx];
+    const mine = arr(room.tries).find((x) => x.team === myTeam);
+    const key = room.code + "/" + room.idx + "/" + entry.id;
+    if (mine && !reacted.has(key)) {
+      reacted.add(key);
+      react(mine.c === entry.c);
+    }
+  }
   if (room?.status === "playing" && room.idx === 0 && room.phase === "question" && !logic.isDuel(room)) {
     const key = room.code + "/" + room.questions?.[0]?.id;
     if (!teamSplashShown.has(key)) {

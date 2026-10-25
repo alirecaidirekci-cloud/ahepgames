@@ -372,3 +372,7 @@ textarea { font: inherit; padding: 9px 12px; border-radius: 10px; border: 1px so
   .yk-main > .scorebar { grid-column: 1; grid-row: 1; align-self: center; }
   .yk-hoca { grid-row: 1; height: 120px; width: 64px; object-fit: contain; position: static; margin-bottom: 6px; }
 }
+/* right / wrong reaction: short, see-through so the question stays visible behind */
+.welcome-screen.yk-react { background: rgba(0, 0, 0, 0.45); }
+.yk-react .mascot { height: 240px; }
+@media (max-width: 760px) { .yk-react .mascot { height: 170px; } }

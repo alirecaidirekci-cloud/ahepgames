@@ -1,5 +1,5 @@
 {
- "v": "20261025-130930",
+ "v": "20261025-175927",
  "files": [
   "css/style.css",
   "data/academic/business.json",
@@ -15,6 +15,8 @@
   "img/apple-touch-icon.png",
   "img/favicon.png",
   "img/hoca.png",
+  "img/hoca_angry.png",
+  "img/hoca_happy.png",
   "img/logo.png",
   "img/mascot.png",
   "index.html",
