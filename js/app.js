@@ -10,12 +10,13 @@ import * as auction from "./auction/view.js";
 import * as yokak from "./yokak/view.js";
 import * as tournamentView from "./tournament/view.js";
 import * as tournamentLogic from "./tournament/logic.js";
+import { isAdmin } from "./admins.js";
 
 const GAMES = { footballer, trivia, academic, teamnation, auction, yokak };
 
 // Set by scripts/release.py. If version.json on the server is newer, this browser still runs
 // cached old files: re-download them and reload once.
-export const APP_VERSION = "20261025-175927";
+export const APP_VERSION = "20261025-181354";
 async function updateIfNeeded() {
   try {
     const info = await (await fetch("version.json", { cache: "no-store" })).json();
@@ -113,7 +114,7 @@ function watchPresence() {
 
 export function onlineUsers() {
   return Object.entries(state.users)
-    .filter(([, u]) => isOnline(u))
+    .filter(([, u]) => isOnline(u) && !u.pending)
     .map(([key, u]) => ({ key, ...u }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -221,6 +222,8 @@ async function onRoute() {
     cleanupRooms(Object.keys(GAMES));
   } else if (game === "tournaments") {
     unsub.push(...tournamentView.enter(state.route));
+  } else if (game === "signups") {
+    // state.users is already watched (presence)
   } else if (GAMES[game]?.pages?.[code]) {
     unsub.push(...(GAMES[game].pages[code].enter?.() || []));
   } else if (GAMES[game] && !code) {
@@ -258,13 +261,59 @@ async function onRoute() {
   rerender();
 }
 
+// ---------- passwords ----------
+// Simple passwords: users/<key>/pw = {salt, hash} with hash = SHA-256(salt + password).
+// New usernames and existing usernames without a password choose one (typed twice) on login.
+const PW_MIN = 6;
+const toHex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+async function hashPw(salt, pw) {
+  return toHex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(salt + ":" + pw)));
+}
+async function newPw(pw) {
+  const salt = toHex(crypto.getRandomValues(new Uint8Array(16)));
+  return { salt, hash: await hashPw(salt, pw) };
+}
+
+const loginError = (key) => ((state.error = t(key)), rerender());
+
 async function login(e) {
   e.preventDefault();
-  const name = new FormData(e.target).get("name").trim();
-  if (!validName(name)) return ((state.error = t("nameBad")), rerender());
+  const form = new FormData(e.target);
+  const step = state.loginStep; // set when the password has to be typed a second time
+  const name = step ? step.name : form.get("name").trim();
+  const pw = form.get("pw") || "";
+  if (!validName(name)) return loginError("nameBad");
   const key = nameKey(name);
-  const r = await db.tx(`users/${key}`, (cur) => ({ name: cur?.name || name, createdAt: cur?.createdAt || db.now(), lastSeen: db.now() }));
-  state.me = { key, name: r.value.name };
+  if (step) {
+    if (form.get("pw2") !== step.pw) return loginError("pwMismatch");
+    const pwData = await newPw(step.pw);
+    // Only sets the password if nobody else set one in the meantime.
+    // New usernames wait for an admin's approval; existing usernames (claiming) log in right away.
+    const r = await db.tx(`users/${key}`, (cur) => {
+      if (cur?.pw || (!cur && step.claim) || (cur && !step.claim)) return undefined;
+      return { ...(cur || {}), name: cur?.name || name, createdAt: cur?.createdAt || db.now(), lastSeen: db.now(), pw: pwData, ...(cur ? {} : { pending: true }) };
+    });
+    if (!r.committed) return ((state.loginStep = null), loginError("pwTaken"));
+    if (r.value.pending) return ((state.loginStep = null), loginError("signupPending"));
+    return finishLogin(key, r.value.name);
+  }
+  if (pw.length < PW_MIN) return loginError("pwShort");
+  const cur = await db.get(`users/${key}`);
+  if (cur?.pw) {
+    if ((await hashPw(cur.pw.salt, pw)) !== cur.pw.hash) return loginError("pwWrong");
+    if (cur.pending) return loginError("signupPending");
+    await db.update(`users/${key}`, { lastSeen: db.now() });
+    return finishLogin(key, cur.name || name);
+  }
+  // New username, or an existing one that has no password yet: confirm the new password.
+  state.loginStep = { name: cur?.name || name, pw, claim: !!cur };
+  state.error = "";
+  rerender();
+}
+
+function finishLogin(key, name) {
+  state.loginStep = null;
+  state.me = { key, name };
   store.setItem("fg-user", JSON.stringify(state.me));
   state.error = "";
   showWelcome();
@@ -322,6 +371,7 @@ function body() {
   const [game, code] = state.route;
   if (!game) return homeView();
   if (game === "tournaments") return tournamentView.view(state.route);
+  if (game === "signups") return signupsView();
   if (!GAMES[game]) return html`<p>404 · <a href="#/">${t("back")}</a></p>`;
   if (!code) return roomListView(game);
   if (GAMES[game].pages?.[code]) return GAMES[game].pages[code].view();
@@ -330,14 +380,65 @@ function body() {
 }
 
 function loginView() {
+  const step = state.loginStep;
+  if (step) {
+    const back = () => ((state.loginStep = null), (state.error = ""), rerender());
+    return html`
+      <form class="card narrow" @submit=${login}>
+        <h2>${t(step.claim ? "pwClaimTitle" : "pwNewTitle", { name: step.name })}</h2>
+        <p class="hint">${t(step.claim ? "pwClaimHint" : "pwNewHint")}</p>
+        <input name="pw2" type="password" autocomplete="new-password" placeholder=${t("pwAgain")} autofocus />
+        ${state.error ? html`<p class="error">${state.error}</p>` : nothing}
+        <div class="row">
+          <button type="button" @click=${back}>${t("back")}</button>
+          <button class="primary">${t("pwSave")}</button>
+        </div>
+      </form>
+    `;
+  }
   return html`
     <form class="card narrow" @submit=${login}>
       <h2>${t("chooseName")}</h2>
-      <input name="name" autocomplete="off" maxlength="16" placeholder="username" autofocus />
+      <input name="name" autocomplete="username" maxlength="16" placeholder=${t("usernamePh")} autofocus />
+      <input name="pw" type="password" autocomplete="current-password" placeholder=${t("passwordPh")} />
       <p class="hint">${t("nameHint")}</p>
       ${state.error ? html`<p class="error">${state.error}</p>` : nothing}
       <button class="primary">${t("enter")}</button>
     </form>
+  `;
+}
+
+// ---------- sign-up approval (admins only, see admins.js) ----------
+const pendingSignups = () =>
+  Object.entries(state.users)
+    .filter(([, u]) => u?.pending)
+    .map(([key, u]) => ({ key, ...u }))
+    .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+
+function signupNotice() {
+  const n = isAdmin(state.me) ? pendingSignups().length : 0;
+  return n ? html`<div class="notices"><a class="notice" href="#/signups">🆕 ${t("signupNotice", { n })}</a></div>` : nothing;
+}
+
+function signupsView() {
+  if (!isAdmin(state.me)) return html`<p>404 · <a href="#/">${t("back")}</a></p>`;
+  const list = pendingSignups();
+  const approve = (key) => db.update(`users/${key}`, { pending: null });
+  const reject = (u) => setUi({ confirm: { text: t("signupRejectConfirm", { name: u.name }), yes: () => db.set(`users/${u.key}`, null) } });
+  return html`
+    <a href="#/" class="back">${t("back")}</a>
+    <h2>🆕 ${t("signupsTitle")}</h2>
+    ${list.length
+      ? html`<div class="room-list">
+          ${list.map(
+            (u) => html`<div class="card room-item">
+              <b>${u.name}</b><span class="hint">${u.createdAt ? new Date(u.createdAt).toLocaleString(getLang() === "tr" ? "tr-TR" : "en-US") : ""}</span>
+              <button class="small primary" @click=${() => approve(u.key)}>✅ ${t("approve")}</button>
+              <button class="small" @click=${() => reject(u)}>✖ ${t("reject")}</button>
+            </div>`
+          )}
+        </div>`
+      : html`<p class="hint">${t("noSignups")}</p>`}
   `;
 }
 
@@ -351,7 +452,7 @@ function homeView() {
   });
   rows.sort((a, b) => b.total - a.total);
   return html`
-    ${tournamentView.homeNotices()}
+    ${signupNotice()} ${tournamentView.homeNotices()}
     ${GAME_GROUPS.map(
       ([title, keys]) => html`<h2>${t(title)}</h2>
         <div class="games games-${title === "quizGames" ? keys.length + 1 : keys.length}">
