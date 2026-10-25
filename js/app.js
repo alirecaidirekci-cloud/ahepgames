@@ -10,13 +10,17 @@ import * as auction from "./auction/view.js";
 import * as yokak from "./yokak/view.js";
 import * as tournamentView from "./tournament/view.js";
 import * as tournamentLogic from "./tournament/logic.js";
-import { isAdmin } from "./admins.js";
+// Namespace import: a browser that still has an older cached admins.js keeps working.
+import * as admins from "./admins.js";
+const { isAdmin } = admins;
+const HIDDEN_ONLINE = admins.HIDDEN_ONLINE || [];
+const canPlay = (key) => admins.canPlay?.(key) ?? true;
 
 const GAMES = { footballer, trivia, academic, teamnation, auction, yokak };
 
 // Set by scripts/release.py. If version.json on the server is newer, this browser still runs
 // cached old files: re-download them and reload once.
-export const APP_VERSION = "20261025-181354";
+export const APP_VERSION = "20261025-183234";
 async function updateIfNeeded() {
   try {
     const info = await (await fetch("version.json", { cache: "no-store" })).json();
@@ -114,7 +118,7 @@ function watchPresence() {
 
 export function onlineUsers() {
   return Object.entries(state.users)
-    .filter(([, u]) => isOnline(u) && !u.pending)
+    .filter(([key, u]) => isOnline(u) && !u.pending && (!HIDDEN_ONLINE.includes(key) || key === state.me?.key))
     .map(([key, u]) => ({ key, ...u }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -228,6 +232,8 @@ async function onRoute() {
     unsub.push(...(GAMES[game].pages[code].enter?.() || []));
   } else if (GAMES[game] && !code) {
     unsub.push(watchRooms(game, (list) => ((state.rooms = list), rerender())));
+  } else if (GAMES[game] && code && !canPlay(state.me.key)) {
+    // admin-only account: body() shows a note instead of the room (no joining or watching)
   } else if (GAMES[game] && code) {
     await GAMES[game].prepare?.();
     // Opening the room an invite points to uses up that invite.
@@ -374,7 +380,9 @@ function body() {
   if (game === "signups") return signupsView();
   if (!GAMES[game]) return html`<p>404 · <a href="#/">${t("back")}</a></p>`;
   if (!code) return roomListView(game);
-  if (GAMES[game].pages?.[code]) return GAMES[game].pages[code].view();
+  const page = GAMES[game].pages?.[code];
+  if ((!page || page.play) && !canPlay(state.me.key)) return html`<a href="#/${game}" class="back">${t("back")}</a><p class="hint">🛡️ ${t("adminNoPlay")}</p>`;
+  if (page) return page.view();
   if (!state.room) return html`<p>${state.error || "…"}</p><a href="#/${game}">${t("back")}</a>`;
   return GAMES[game].view();
 }
@@ -444,7 +452,7 @@ function signupsView() {
 
 function homeView() {
   const games = Object.keys(GAMES).filter((g) => !GAMES[g].noScores);
-  const rows = Object.entries(state.leaderboard || {}).map(([key, s]) => {
+  const rows = Object.entries(state.leaderboard || {}).filter(([key]) => canPlay(key)).map(([key, s]) => {
     const name = games.map((g) => s[g]?.name).find(Boolean) || key;
     const pts = games.map((g) => s[g]?.points || 0);
     const wins = games.reduce((sum, g) => sum + (s[g]?.wins || 0), 0);
@@ -506,14 +514,16 @@ function roomListView(game) {
     <p class="hint">${t(game + "Desc")}</p>
     <p class="info">${t(game + "Info", mod.info())}</p>
     ${mod.lobbyExtra?.() || nothing}
-    <div class="row">
-      <button class="primary" @click=${create}>＋ ${t("createRoom")}</button>
-      <form class="row" @submit=${(e) => (e.preventDefault(), join(new FormData(e.target).get("code")))}>
-        <input name="code" placeholder=${t("joinCode")} maxlength="5" class="code-input" />
-        <button>${t("join")}</button>
-        <button type="button" @click=${(e) => watch(e.target.form.code.value)}>👀 ${t("watch")}</button>
-      </form>
-    </div>
+    ${canPlay(state.me.key)
+      ? html`<div class="row">
+          <button class="primary" @click=${create}>＋ ${t("createRoom")}</button>
+          <form class="row" @submit=${(e) => (e.preventDefault(), join(new FormData(e.target).get("code")))}>
+            <input name="code" placeholder=${t("joinCode")} maxlength="5" class="code-input" />
+            <button>${t("join")}</button>
+            <button type="button" @click=${(e) => watch(e.target.form.code.value)}>👀 ${t("watch")}</button>
+          </form>
+        </div>`
+      : html`<p class="hint">🛡️ ${t("adminNoPlay")}</p>`}
     ${state.error ? html`<p class="error">${state.error}</p>` : nothing}
     <h3>${t("openRooms")}</h3>
     ${state.rooms.length
@@ -524,8 +534,8 @@ function roomListView(game) {
             return html`<div class="card room-item">
               <b>${r.tournament ? "🏆 " : ""}${r.code}</b><span>${ps.map((p) => p.name).join(", ")}</span>
               <span class="pill">${r.status === "lobby" ? t("statusWaiting") : t("statusPlaying")} · ${ps.length}/${mod.MAX_PLAYERS}</span>
-              ${open ? html`<button class="small primary" @click=${() => join(r.code)}>${t("join")}</button>` : nothing}
-              <button class="small" @click=${() => watch(r.code)}>👀 ${t("watch")}</button>
+              ${open && canPlay(state.me.key) ? html`<button class="small primary" @click=${() => join(r.code)}>${t("join")}</button>` : nothing}
+              ${canPlay(state.me.key) ? html`<button class="small" @click=${() => watch(r.code)}>👀 ${t("watch")}</button>` : nothing}
             </div>`;
           })}
         </div>`

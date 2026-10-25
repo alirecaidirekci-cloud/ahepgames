@@ -5,6 +5,7 @@ import { state, act, setUi, rerender, roomHeader } from "../app.js";
 import { t, getLang } from "../i18n.js";
 import { html, nothing, roomPlayers, shuffle, arr } from "../lib.js";
 import * as logic from "./logic.js";
+import * as admins from "../admins.js";
 
 export const MAX_PLAYERS = logic.MAX_PLAYERS;
 export const icon = "🏛️";
@@ -92,6 +93,8 @@ const trOnlyNote = () =>
   getLang() === "tr" ? nothing : html`<p class="card yk-note">🇹🇷 ${t("yokakTrOnly")}</p>`;
 
 export const lobbyExtra = () => html`${splashView()} ${trOnlyNote()}
+  ${admins.canPlay?.(state.me.key) === false ? nothing : soloCard()}`;
+const soloCard = () => html`
   <div class="card yk-solo">
     <div>
       <b>🧑‍🎓 Tek kişilik alıştırma</b>
@@ -198,6 +201,7 @@ function soloView() {
 
 export const pages = {
   solo: {
+    play: true, // a game, not an info page (admin-only accounts can't open it)
     enter() {
       newSolo();
       return [];

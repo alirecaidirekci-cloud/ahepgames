@@ -6,6 +6,8 @@ import { html, nothing, arr } from "../lib.js";
 import { CATEGORIES } from "../trivia/questions.js";
 import { SUBJECTS, subjectName } from "../academic/bank.js";
 import * as L from "./logic.js";
+import * as admins from "../admins.js";
+const canPlay = (key) => admins.canPlay?.(key) ?? true; // tolerant of an older cached admins.js
 
 const GAME_ICON = { trivia: "🧠", academic: "🎓" };
 const MEDAL_ICON = { gold: "🥇", silver: "🥈", bronze: "🥉" };
@@ -58,6 +60,7 @@ const teamName = (tour, id) => tour.teams?.[id]?.name || "?";
 
 export function medalRows() {
   return Object.entries(ts.medals)
+    .filter(([key]) => canPlay(key))
     .map(([key, m]) => ({ key, name: m.name || key, gold: m.gold || 0, silver: m.silver || 0, bronze: m.bronze || 0 }))
     .sort((a, b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze || a.name.localeCompare(b.name));
 }
@@ -250,6 +253,7 @@ function registration(tour, myTeamId, myTeam) {
       </div>
     </div>`;
   if (myTeam) return nothing;
+  if (!canPlay(state.me.key)) return html`<p class="hint">🛡️ ${t("adminNoPlay")}</p>`;
   if (L.activeTeams(tour) >= tour.maxTeams) return html`<p class="hint">${t("tFull")}</p>`;
   return registerForm(tour);
 }
@@ -262,7 +266,7 @@ function registerForm(tour) {
   const taken = (k) => !!L.teamOf(tour, k);
   const candidates = Object.entries(state.users || {})
     .map(([key, u]) => ({ key, name: u.name || key }))
-    .filter((u) => u.key !== state.me.key && !picked.some((p) => p.key === u.key) && !taken(u.key))
+    .filter((u) => u.key !== state.me.key && canPlay(u.key) && !picked.some((p) => p.key === u.key) && !taken(u.key))
     .filter((u) => !q || u.name.toLocaleLowerCase().includes(q))
     .sort((a, b) => a.name.localeCompare(b.name))
     .slice(0, 12);
