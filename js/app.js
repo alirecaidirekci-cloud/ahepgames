@@ -7,14 +7,15 @@ import * as trivia from "./trivia/view.js";
 import * as academic from "./academic/view.js";
 import * as teamnation from "./teamnation/view.js";
 import * as auction from "./auction/view.js";
+import * as yokak from "./yokak/view.js";
 import * as tournamentView from "./tournament/view.js";
 import * as tournamentLogic from "./tournament/logic.js";
 
-const GAMES = { footballer, trivia, academic, teamnation, auction };
+const GAMES = { footballer, trivia, academic, teamnation, auction, yokak };
 
 // Set by scripts/release.py. If version.json on the server is newer, this browser still runs
 // cached old files: re-download them and reload once.
-export const APP_VERSION = "20261025-115402";
+export const APP_VERSION = "20261025-122823";
 async function updateIfNeeded() {
   try {
     const info = await (await fetch("version.json", { cache: "no-store" })).json();
@@ -27,10 +28,11 @@ async function updateIfNeeded() {
     return false;
   }
 }
-// Home page rows: football games and quiz games.
+// Home page rows: football games, quiz games and special games.
 const GAME_GROUPS = [
   ["footballGames", ["footballer", "teamnation", "auction"]],
   ["quizGames", ["trivia", "academic"]],
+  ["specialGames", ["yokak"]],
 ];
 
 // Local demo mode keeps the user per tab so several tabs can be different players.

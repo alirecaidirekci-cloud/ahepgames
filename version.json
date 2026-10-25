@@ -1,5 +1,5 @@
 {
- "v": "20261025-115402",
+ "v": "20261025-122823",
  "files": [
   "css/style.css",
   "data/academic/business.json",
@@ -11,6 +11,7 @@
   "data/academic/trade.json",
   "data/players.json",
   "data/pool.json",
+  "data/yokak.json",
   "img/apple-touch-icon.png",
   "img/favicon.png",
   "img/logo.png",
@@ -38,6 +39,8 @@
   "js/tournament/view.js",
   "js/trivia/logic.js",
   "js/trivia/questions.js",
-  "js/trivia/view.js"
+  "js/trivia/view.js",
+  "js/yokak/logic.js",
+  "js/yokak/view.js"
  ]
 }
