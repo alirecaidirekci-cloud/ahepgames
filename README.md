@@ -95,8 +95,7 @@ ends, after 45 minutes without any action, or after 6 hours at most.
   differs. Answers in name-heavy subjects (music, film, TV, games, books, celebrities…) stay as they are.
   Pool: 4,444 multiple-choice
   questions across 22 subjects (counts per subject are in `js/trivia/questions.js`).
-- Each question shows 10 options. Open Trivia DB supplies 1 right and 3 wrong answers; the other
-  6 wrong answers are nearby numbers or similar-looking answers borrowed from other questions.
+- Each question shows its 4 options from Open Trivia DB (1 right and 3 wrong answers).
 - Coin flip decides who starts; the starting team alternates every question.
 - 20 questions, 2 minutes each. Only the team captain submits; teammates can suggest.
 - Wrong answer or time up → the other team gets 30 seconds to steal the point.

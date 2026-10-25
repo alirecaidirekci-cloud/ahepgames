@@ -20,7 +20,7 @@ const GAMES = { footballer, trivia, academic, teamnation, auction, yokak };
 
 // Set by scripts/release.py. If version.json on the server is newer, this browser still runs
 // cached old files: re-download them and reload once.
-export const APP_VERSION = "20261025-195756";
+export const APP_VERSION = "20261026-000226";
 async function updateIfNeeded() {
   try {
     const info = await (await fetch("version.json", { cache: "no-store" })).json();
