@@ -376,3 +376,30 @@ textarea { font: inherit; padding: 9px 12px; border-radius: 10px; border: 1px so
 .welcome-screen.yk-react { background: rgba(0, 0, 0, 0.45); }
 .yk-react .mascot { height: 240px; }
 @media (max-width: 760px) { .yk-react .mascot { height: 170px; } }
+/* Transfer Auction: final vote — both teams as two rows of five cards, one column per position */
+.auc-board { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.auc-board-pos { display: flex; flex-direction: column; align-items: center; font-size: 1.2rem; line-height: 1.1; }
+.auc-board-pos small { font-size: 0.7rem; color: var(--muted); }
+.auc-board-team { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; margin-top: 6px; padding-bottom: 2px; border-bottom: 1px solid var(--line); }
+.auc-bcard { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1px; min-width: 0;
+  padding: 6px 4px; border: 2px solid var(--line); border-radius: 12px; background: var(--card); color: var(--text); font: inherit; }
+button.auc-bcard { cursor: pointer; }
+.auc-bcard img { width: 100%; max-width: 150px; aspect-ratio: 1; object-fit: cover; object-position: top; border-radius: 9px; background: var(--line); }
+.auc-bcard b { width: 100%; font-size: 0.9rem; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.auc-bcard small { width: 100%; color: var(--muted); font-size: 0.72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.auc-bcard em { font-style: normal; font-size: 0.78rem; font-weight: 700; color: var(--gold); }
+.auc-bcard.on { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+.auc-bcard.win { border-color: var(--gold); }
+.auc-check { position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent); color: #fff; font-weight: 800; font-size: 0.8rem; }
+.auc-votes { font-weight: 700; font-size: 0.8rem; }
+@media (max-width: 520px) {
+  .auc-board { gap: 4px; padding: 10px 8px; }
+  .auc-bcard { padding: 3px 2px; border-radius: 9px; }
+  .auc-bcard img { border-radius: 6px; }
+  .auc-bcard b { font-size: 0.72rem; }
+  .auc-bcard-nat { display: none; }
+  .auc-bcard em, .auc-votes { font-size: 0.68rem; }
+  .auc-board-pos small { font-size: 0.6rem; }
+  .auc-check { width: 18px; height: 18px; font-size: 0.7rem; }
+}

@@ -2,7 +2,7 @@
 import { state, act, roomHeader } from "../app.js";
 import { db } from "../db.js";
 import { t } from "../i18n.js";
-import { html, nothing, roomPlayers, shuffle } from "../lib.js";
+import { html, nothing, roomPlayers, shuffle, fmtTime } from "../lib.js";
 import * as data from "../footballer/data.js";
 import * as logic from "./logic.js";
 
@@ -94,7 +94,7 @@ function progressDots() {
   const room = state.room;
   return html`<div class="auc-progress">
     ${logic.POSITIONS.map(
-      (p, i) => html`<span class=${i === room.idx && room.status === "playing" ? "now" : i < room.idx || room.status === "ended" ? "done" : ""} title=${roleName(p)}>
+      (p, i) => html`<span class=${i === room.idx && room.status === "playing" && room.phase !== "vote" ? "now" : i < room.idx || room.status === "ended" ? "done" : ""} title=${roleName(p)}>
         ${ROLE_ICON[p]}<small>${roleName(p)}</small>
       </span>`
     )}
@@ -156,8 +156,64 @@ function bidArea() {
   </div>`;
 }
 
+// ---------- voting (after the transfer window) ----------
+// Both teams as two rows of five cards (one column per position), like the lineups during the
+// auction but bigger. Everyone in the room taps the better footballer in each column; vote counts
+// stay hidden until the vote closes.
+
+function boardCard(owner, pos, { picked, onPick, votes, win }) {
+  const s = state.room.squads?.[owner]?.[pos];
+  const p = s && data.playerById(s.id);
+  if (!p) return html`<div class="auc-bcard empty"></div>`;
+  const body = html`<img src=${data.photoUrl(p, 250)} alt=${p.name} />
+    <b title=${p.name}>${surname(p.name)}</b>
+    <small class="auc-bcard-nat">${data.countryName(p.nat)}</small>
+    <em>${s.price ? "€" + s.price : t("free")}</em>
+    ${picked ? html`<span class="auc-check">✓</span>` : nothing}
+    ${votes !== undefined ? html`<span class="auc-votes">${win ? "🏆" : ""}${t("votesN", { n: votes })}</span>` : nothing}`;
+  return onPick
+    ? html`<button class="auc-bcard ${picked ? "on" : ""}" title=${p.name} @click=${onPick}>${body}</button>`
+    : html`<div class="auc-bcard ${win ? "win" : ""}" title=${p.name}>${body}</div>`;
+}
+
+// opts(owner, pos) -> options for boardCard
+function teamBoard(opts) {
+  const room = state.room;
+  const [a, b] = logic.bidders(room);
+  const teamRow = (owner) => html`
+    <div class="auc-board-team">
+      <b>${nameOf(owner)}${owner === state.me.key ? ` (${t("you")})` : ""}</b><span>€${room.budgets?.[owner] ?? 0}</span>
+    </div>
+    ${logic.POSITIONS.map((pos) => boardCard(owner, pos, opts(owner, pos)))}`;
+  return html`<div class="card auc-board">
+    ${logic.POSITIONS.map((pos) => html`<div class="auc-board-pos">${ROLE_ICON[pos]}<small>${roleName(pos)}</small></div>`)}
+    ${teamRow(a)} ${teamRow(b)}
+  </div>`;
+}
+
+function voting() {
+  const room = state.room;
+  const me = state.me.key;
+  const canVote = logic.voters(room).includes(me);
+  const mine = room.votes?.[me] || {};
+  const all = logic.voters(room);
+  const done = all.filter((k) => logic.POSITIONS.every((pos) => room.votes?.[k]?.[pos])).length;
+  const left = Math.max(0, room.deadline - db.now());
+  return html`<div class="auc">
+    <div class="card auc-main center">
+      <h2>${t("auctionDone")}</h2>
+      <p class="big">🗳️ ${t("voteTitle")}</p>
+      <p class="hint">${t("voteHint")}</p>
+      <div class="auc-timer ${left < 15000 ? "urgent" : ""}"><div style="width:${Math.min(100, (left / logic.VOTE_MS) * 100)}%"></div></div>
+      <p class="hint">⏱ ${fmtTime(left)} · ${t("votedCount", { v: done, n: all.length })}</p>
+    </div>
+    ${teamBoard((owner, pos) => ({ picked: mine[pos] === owner, onPick: canVote ? () => act({ type: "vote", pos, side: owner }) : null }))}
+  </div>`;
+}
+
 function playing() {
   const room = state.room;
+  if (room.phase === "vote") return voting();
   const left = room.deadline - db.now();
   if (room.phase === "coin") {
     const flipping = left > 1200;
@@ -198,12 +254,21 @@ function playing() {
 function ended() {
   const room = state.room;
   const [a, b] = logic.bidders(room);
+  const res = room.result || logic.tally(room);
+  const score = { a: res.won?.[a] || 0, b: res.won?.[b] || 0 };
+  const headline = res.winner
+    ? t("voteWinner", { name: nameOf(res.winner), x: Math.max(score.a, score.b), y: Math.min(score.a, score.b) })
+    : t("voteDraw", { x: score.a, y: score.b });
   return html`<div class="auc">
     <div class="card center auc-main">
       <h2>${t("auctionDone")}</h2>
-      <p class="hint">${t("noWinner")}</p>
+      <p class="big">${headline}</p>
+      <p class="hint">${nameOf(a)} ${score.a} – ${score.b} ${nameOf(b)} · ${t("voteNoPoints")}</p>
     </div>
-    <div class="card auc-teams">${lineup(a)} ${lineup(b)}</div>
+    ${teamBoard((owner, pos) => {
+      const r = res.positions?.[pos] || { counts: {} };
+      return { votes: r.counts?.[owner] || 0, win: r.winner === owner };
+    })}
     <p class="center">
       ${room.players?.[state.me.key] ? html`<button class="primary" @click=${() => act({ type: "replay", pairs: drawPairs() })}>🔁 ${t("replay")}</button>` : nothing}
       <a class="button" href="#/auction">${t("playAgain")}</a>
