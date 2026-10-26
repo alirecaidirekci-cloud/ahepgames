@@ -1,5 +1,5 @@
 {
- "v": "20261026-125911",
+ "v": "20261026-133543",
  "files": [
   "css/style.css",
   "data/academic/business.json",
@@ -27,6 +27,7 @@
   "js/app.js",
   "js/auction/logic.js",
   "js/auction/view.js",
+  "js/chat.js",
   "js/db.js",
   "js/firebase-config.js",
   "js/footballer/data.js",

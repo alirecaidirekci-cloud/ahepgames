@@ -12,6 +12,7 @@ export const reduce = logic.reduce;
 export const prepare = () => pool.loadPool();
 export const needsTick = (room, now) => room.status === "playing" && room.deadline && now >= room.deadline;
 export const newRoomFields = (me) => ({ roles: { [me.key]: "admin" } });
+export const chat = true; // room chat under the game (js/chat.js); players may also type their answers there
 export const info = () => ({ win: logic.WIN_SCORE, sec: logic.GUESS_MS / 1000, pts: logic.WIN_POINTS });
 
 export function onRoom(room, code) {

@@ -403,3 +403,14 @@ button.auc-bcard { cursor: pointer; }
   .auc-board-pos small { font-size: 0.6rem; }
   .auc-check { width: 18px; height: 18px; font-size: 0.7rem; }
 }
+/* room chat (football games), shown under the game */
+.chat h3 { margin: 0 0 8px; }
+.chat-list { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.chat-msg { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; line-height: 1.35; overflow-wrap: anywhere; }
+.chat-msg small { color: var(--muted); font-size: 0.72rem; }
+.chat-msg.mine b { color: var(--accent); }
+.chat-hidden { color: var(--muted); font-style: italic; }
+.chat-quick { display: flex; gap: 6px; margin: 8px 0; flex-wrap: wrap; }
+.chat-quick button { font-size: 1.1rem; padding: 2px 10px; }
+.chat-form { display: flex; gap: 8px; }
+.chat-form input { flex: 1; min-width: 0; }

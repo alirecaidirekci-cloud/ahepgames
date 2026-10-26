@@ -13,6 +13,7 @@ export const prepare = () => data.loadData();
 export const needsTick = (room, now) => room.status === "playing" && now >= room.deadline;
 export const info = () => ({ budget: logic.BUDGET });
 export const noScores = true; // no leaderboard points for this game
+export const chat = true; // room chat under the game (js/chat.js)
 
 const nameOf = (key) => state.room.players?.[key]?.name || key;
 const ROLE_ICON = { GK: "🧤", DF: "🛡️", MF: "🎯", W: "⚡", ST: "⚽" };

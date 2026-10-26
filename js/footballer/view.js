@@ -12,6 +12,19 @@ export const prepare = () => data.loadData();
 export const reduce = (room, a, me, now) => logic.reduce(room, a, me, now, data);
 export const needsTick = (room, now) => room.status === "playing" && now >= room.deadline;
 export const newRoomFields = (me) => ({ picker: me.key });
+export const chat = true; // room chat under the game (js/chat.js)
+
+// Chat messages that name the secret footballer stay hidden until the round ends.
+const norm = (s) => s.toLocaleLowerCase("tr").replace(/ı/g, "i").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+export function chatHide(room, text) {
+  if (room.status === "ended" || !room.secret) return false;
+  const p = data.playerById(room.secret);
+  if (!p) return false;
+  const words = ` ${norm(text).replace(/[^\p{L}\p{N}]+/gu, " ")} `;
+  const name = norm(p.name).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  // the full name, or any part of it with 4+ letters ("Güler", "Ronaldinho")
+  return words.includes(` ${name} `) || name.split(" ").some((part) => part.length >= 4 && words.includes(` ${part} `));
+}
 export const info = () => ({
   players: logic.FOOTBALLER_COUNT,
   minP: 2,
