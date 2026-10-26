@@ -10,6 +10,8 @@ import * as auction from "./auction/view.js";
 import * as yokak from "./yokak/view.js";
 import * as tournamentView from "./tournament/view.js";
 import { chatBox } from "./chat.js";
+import { meetPlayers } from "./players.js";
+import { recordLastGame } from "./history.js";
 import * as tournamentLogic from "./tournament/logic.js";
 // Namespace import: a browser that still has an older cached admins.js keeps working.
 import * as admins from "./admins.js";
@@ -21,7 +23,7 @@ const GAMES = { footballer, trivia, academic, teamnation, auction, yokak };
 
 // Set by scripts/release.py. If version.json on the server is newer, this browser still runs
 // cached old files: re-download them and reload once.
-export const APP_VERSION = "20261026-133543";
+export const APP_VERSION = "20261026-190806";
 async function updateIfNeeded() {
   try {
     const info = await (await fetch("version.json", { cache: "no-store" })).json();
@@ -261,6 +263,7 @@ async function onRoute() {
         state.room = room;
         if (!room) state.error = t("roomNotFound");
         GAMES[game].onRoom?.(room, code);
+        recordLastGame(game, room);
         rerender();
       })
     );
@@ -476,6 +479,7 @@ function homeView() {
           ${title === "quizGames" ? tournamentView.homeCard() : nothing}
         </div>`
     )}
+    ${meetPlayers()}
     ${onlineSection()}
     <h2>🏆 ${t("leaderboard")}</h2>
     ${rows.length

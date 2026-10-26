@@ -17,7 +17,7 @@ os.chdir(ROOT)
 version = time.strftime("%Y%m%d-%H%M%S")
 files = sorted(
     f.replace(os.sep, "/")
-    for pattern in ["index.html", "css/*.css", "js/**/*.js", "data/*.json", "data/academic/*.json", "img/*.png"]
+    for pattern in ["index.html", "css/*.css", "js/**/*.js", "data/*.json", "data/academic/*.json", "img/*.png", "img/players/*.webp"]
     for f in glob.glob(pattern, recursive=True)
 )
 with open("version.json", "w", encoding="utf-8") as fh:
