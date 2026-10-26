@@ -39,6 +39,58 @@ const placed = PEOPLE.map((p, i) => {
   return { p, i, sil, left: p.x - w / 2, top: row.floor - row.height, w, h: row.height, floor: row.floor };
 }).sort((a, b) => (a.p.row === "front") - (b.p.row === "front") || a.p.x - b.p.x);
 
+// ---------- "Ben geldim" ----------
+// When a player of this photo logs in, or opens the site after being away for a while, everyone
+// else on the home page sees their caricature with a "Ben geldim!" bubble for a few seconds.
+// users/<key>/arrived = time of the arrival; seenAt = last time the site was open (see app.js).
+const AWAY_MS = 10 * 60 * 1000;
+const FRESH_MS = 30 * 1000; // arrivals older than this are not announced any more
+const SHOW_MS = 5000;
+const checked = new Set();
+export const arrivalChecked = (key) => checked.has(key);
+
+export async function checkArrival(key) {
+  if (checked.has(key)) return;
+  const member = PEOPLE.some((p) => p.user === key);
+  await db.tx(`users/${key}`, (cur) => {
+    if (!cur) return undefined;
+    const now = db.now();
+    if (member && (!cur.seenAt || now - cur.seenAt > AWAY_MS)) cur.arrived = now;
+    cur.seenAt = now;
+    return cur;
+  }).catch(() => {});
+  checked.add(key);
+}
+
+const announced = new Map(); // "<user>/<arrived>" -> time it stops showing
+export function arrivals() {
+  const now = db.now();
+  const me = state.me?.key;
+  for (const p of PEOPLE) {
+    const at = state.users?.[p.user]?.arrived;
+    const id = `${p.user}/${at}`;
+    if (!at || p.user === me || announced.has(id) || now - at > FRESH_MS) continue;
+    announced.set(id, now + SHOW_MS);
+    setTimeout(rerender, SHOW_MS + 50);
+  }
+  const showing = PEOPLE.flatMap((p) => {
+    const at = state.users?.[p.user]?.arrived;
+    const until = announced.get(`${p.user}/${at}`);
+    return until && until > now ? [{ p, leaving: until - now < 600 }] : [];
+  });
+  if (showing.some((s) => s.leaving)) setTimeout(rerender, 650);
+  return showing.length
+    ? html`<div class="mp-arrivals">
+        ${showing.map(
+          ({ p, leaving }) => html`<div class="mp-arrival ${leaving ? "leaving" : ""}">
+            <img src=${img(p)} alt=${p.name} />
+            <div class="bubble">${t("benGeldim")}<small>${p.name}</small></div>
+          </div>`
+        )}
+      </div>`
+    : nothing;
+}
+
 let hot = null; // index being hovered
 let open = null; // index shown on the card
 

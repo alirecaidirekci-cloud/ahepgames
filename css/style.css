@@ -462,3 +462,14 @@ button.auc-bcard { cursor: pointer; }
 .mp-last li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; background: var(--mp-soft); border-radius: 12px; padding: 8px 12px; }
 .mp-last span { color: var(--muted); font-size: .85rem; min-width: 84px; }
 .mp-last small { color: var(--muted); margin-left: auto; }
+/* "Ben geldim" arrivals: caricature + bubble in the bottom corner of the home page */
+.mp-arrivals { position: fixed; left: 16px; bottom: 16px; z-index: 15; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+.mp-arrival { display: flex; align-items: flex-end; gap: 6px; animation: mp-arrive .5s cubic-bezier(.2, 1.4, .4, 1) both; }
+.mp-arrival.leaving { animation: mp-leave .6s ease forwards; }
+.mp-arrival img { height: 170px; width: auto; filter: drop-shadow(0 6px 14px rgb(0 0 0 / .35)); }
+.mp-arrival .bubble { margin-bottom: 110px; font-size: 1.15rem; padding: 10px 16px; display: flex; flex-direction: column; }
+.mp-arrival .bubble small { font-size: .8rem; font-weight: 600; color: var(--muted); }
+@keyframes mp-arrive { from { opacity: 0; transform: translateX(-60px); } }
+@keyframes mp-leave { to { opacity: 0; transform: translateX(-60px); } }
+@media (max-width: 600px) { .mp-arrival img { height: 120px; } .mp-arrival .bubble { margin-bottom: 76px; font-size: 1rem; } }
+@media (prefers-reduced-motion: reduce) { .mp-arrival, .mp-arrival.leaving { animation: none; } }

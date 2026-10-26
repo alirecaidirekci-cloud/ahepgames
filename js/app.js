@@ -10,7 +10,7 @@ import * as auction from "./auction/view.js";
 import * as yokak from "./yokak/view.js";
 import * as tournamentView from "./tournament/view.js";
 import { chatBox } from "./chat.js";
-import { meetPlayers } from "./players.js";
+import { meetPlayers, arrivals, checkArrival, arrivalChecked } from "./players.js";
 import { recordLastGame } from "./history.js";
 import * as tournamentLogic from "./tournament/logic.js";
 // Namespace import: a browser that still has an older cached admins.js keeps working.
@@ -23,7 +23,7 @@ const GAMES = { footballer, trivia, academic, teamnation, auction, yokak };
 
 // Set by scripts/release.py. If version.json on the server is newer, this browser still runs
 // cached old files: re-download them and reload once.
-export const APP_VERSION = "20261026-190806";
+export const APP_VERSION = "20261026-191419";
 async function updateIfNeeded() {
   try {
     const info = await (await fetch("version.json", { cache: "no-store" })).json();
@@ -97,7 +97,10 @@ const isOnline = (u) => !!u?.lastActive && db.now() - u.lastActive < ONLINE_MS;
 
 function heartbeat() {
   if (!state.me) return;
-  db.update(`users/${state.me.key}`, { name: state.me.name, lastActive: db.now(), where: state.route.slice(0, 2).join("/") });
+  // seenAt (unlike lastActive) is not cleared when a tab closes; it tells "came back after a while"
+  // from "refreshed the page". It is only written after the arrival check has read the old value.
+  const seen = arrivalChecked(state.me.key) ? { seenAt: db.now() } : {};
+  db.update(`users/${state.me.key}`, { name: state.me.name, lastActive: db.now(), where: state.route.slice(0, 2).join("/"), ...seen });
 }
 setInterval(heartbeat, 30 * 1000);
 // No server: every logged-in browser helps move tournaments along (start, open matches, results).
@@ -109,6 +112,7 @@ function watchPresence() {
   presenceOff.forEach((off) => off());
   presenceOff = [];
   if (!state.me) return;
+  checkArrival(state.me.key); // "Ben geldim" for Meet the Players members
   presenceOff.push(db.on("users", (u) => ((state.users = u || {}), rerender())));
   presenceOff.push(db.on("tournaments", (v) => ((state.tournaments = v || {}), rerender())));
   presenceOff.push(
@@ -479,7 +483,7 @@ function homeView() {
           ${title === "quizGames" ? tournamentView.homeCard() : nothing}
         </div>`
     )}
-    ${meetPlayers()}
+    ${meetPlayers()} ${arrivals()}
     ${onlineSection()}
     <h2>🏆 ${t("leaderboard")}</h2>
     ${rows.length
