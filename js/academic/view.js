@@ -3,8 +3,11 @@ import { state, act, setUi, rerender, roomHeader } from "../app.js";
 import { db } from "../db.js";
 import { t } from "../i18n.js";
 import { html, nothing, fmtTime, fmtNum, roomPlayers, awardOnce, arr } from "../lib.js";
-import { isAdmin } from "../admins.js";
+import * as admins from "../admins.js";
+const { isAdmin } = admins;
+const publicName = (me) => admins.publicName?.(me) ?? me.name;
 import * as logic from "./logic.js";
+import { masking, shownName } from "../mask.js";
 import { SUBJECTS, subjectName, loadAll, loadBuiltIn, countBySubject, buildQueues, localized } from "./bank.js";
 import { teamLabel, renameField, autoStart, tournamentLobby, backLink } from "../tournament/match.js";
 
@@ -164,7 +167,7 @@ function playing() {
       confirm: {
         text: t("reportConfirm"),
         yes: async () => {
-          await db.set(`academic/reports/${q.id}/${me}`, { name: state.me.name, t: db.now() });
+          await db.set(`academic/reports/${q.id}/${me}`, { name: publicName(state.me), t: db.now() });
           setUi({ reported: { ...(state.ui.reported || {}), [q.id]: true } });
         },
       },
@@ -226,6 +229,14 @@ function ended() {
 
 // ---------- question bank page (#/academic/bank) ----------
 
+// Hidden players see the people who added or reported questions as player2, player3… (mask.js).
+const maskAdded = (v) =>
+  masking() ? Object.fromEntries(Object.entries(v).map(([id, q]) => [id, { ...q, byName: shownName(q.by, q.byName) }])) : v;
+const maskReports = (v) =>
+  masking()
+    ? Object.fromEntries(Object.entries(v).map(([id, r]) => [id, Object.fromEntries(Object.entries(r || {}).map(([k, x]) => [k, { ...x, name: shownName(k, x.name) }]))]))
+    : v;
+
 const bankState = { builtIn: [], added: {}, hidden: {}, reports: {} };
 
 export const pages = {
@@ -233,9 +244,9 @@ export const pages = {
     enter() {
       loadBuiltIn().then((b) => ((bankState.builtIn = b), rerender()));
       return [
-        db.on("academic/questions", (v) => ((bankState.added = v || {}), rerender())),
+        db.on("academic/questions", (v) => ((bankState.added = maskAdded(v || {})), rerender())),
         db.on("academic/hidden", (v) => ((bankState.hidden = v || {}), rerender())),
-        db.on("academic/reports", (v) => ((bankState.reports = v || {}), rerender())),
+        db.on("academic/reports", (v) => ((bankState.reports = maskReports(v || {})), rerender())),
       ];
     },
     view: bankView,
@@ -339,7 +350,7 @@ function addForm() {
     const tr = side("tr");
     if (!en && !tr) return setUi({ addError: t("fillOneLanguage"), added: false });
     const id = db.now().toString(36) + Math.random().toString(36).slice(2, 7);
-    await db.set(`academic/questions/${id}`, { s: f.get("s"), diff: f.get("diff"), en, tr, by: state.me.key, byName: state.me.name, t: db.now() });
+    await db.set(`academic/questions/${id}`, { s: f.get("s"), diff: f.get("diff"), en, tr, by: state.me.key, byName: publicName(state.me), t: db.now() });
     e.target.reset();
     setUi({ addError: "", added: true });
   };

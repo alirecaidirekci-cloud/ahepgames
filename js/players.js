@@ -5,6 +5,7 @@ import { rerender, state } from "./app.js";
 import { db } from "./db.js";
 import { t, getLang } from "./i18n.js";
 import { html, nothing } from "./lib.js";
+import { masking } from "./mask.js";
 import { svg } from "https://cdn.jsdelivr.net/npm/lit-html@3.1.4/lit-html.js"; // SVG shapes need the svg tag
 
 /* EDIT PLAYERS HERE
@@ -64,6 +65,7 @@ export async function checkArrival(key) {
 
 const announced = new Map(); // "<user>/<arrived>" -> time it stops showing
 export function arrivals() {
+  if (masking()) return nothing; // hidden players don't see real faces and names
   const now = db.now();
   const me = state.me?.key;
   for (const p of PEOPLE) {
@@ -174,6 +176,7 @@ function card() {
 }
 
 export function meetPlayers() {
+  if (masking()) return nothing; // hidden players don't see real faces and names
   return html`<h2>👋 ${t("meetPlayers")}</h2>
     <div class="mp">
       <div class="mp-scene">

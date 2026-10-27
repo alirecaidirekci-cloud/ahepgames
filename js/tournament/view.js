@@ -6,8 +6,11 @@ import { html, nothing, arr } from "../lib.js";
 import { CATEGORIES } from "../trivia/questions.js";
 import { SUBJECTS, subjectName } from "../academic/bank.js";
 import * as L from "./logic.js";
+import { maskMedals } from "../mask.js";
 import * as admins from "../admins.js";
 const canPlay = (key) => admins.canPlay?.(key) ?? true; // tolerant of an older cached admins.js
+const onBoards = (key) => admins.onBoards?.(key) ?? canPlay(key);
+const hidden = (key) => !!admins.ALIASES?.[key];
 
 const GAME_ICON = { trivia: "🧠", academic: "🎓" };
 const MEDAL_ICON = { gold: "🥇", silver: "🥈", bronze: "🥉" };
@@ -20,7 +23,7 @@ const catName = (id) => {
 const ts = { medals: {} };
 
 export function enter(route) {
-  const offs = [db.on("medals", (m) => ((ts.medals = m || {}), rerender()))];
+  const offs = [db.on("medals", (m) => ((ts.medals = maskMedals(m || {})), rerender()))];
   const id = route[1];
   // On a tournament page: move it along every 3 seconds and keep the countdown ticking.
   const timer = setInterval(() => {
@@ -60,7 +63,7 @@ const teamName = (tour, id) => tour.teams?.[id]?.name || "?";
 
 export function medalRows() {
   return Object.entries(ts.medals)
-    .filter(([key]) => canPlay(key))
+    .filter(([key]) => onBoards(key))
     .map(([key, m]) => ({ key, name: m.name || key, gold: m.gold || 0, silver: m.silver || 0, bronze: m.bronze || 0 }))
     .sort((a, b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze || a.name.localeCompare(b.name));
 }
@@ -266,7 +269,7 @@ function registerForm(tour) {
   const taken = (k) => !!L.teamOf(tour, k);
   const candidates = Object.entries(state.users || {})
     .map(([key, u]) => ({ key, name: u.name || key }))
-    .filter((u) => u.key !== state.me.key && canPlay(u.key) && !picked.some((p) => p.key === u.key) && !taken(u.key))
+    .filter((u) => u.key !== state.me.key && canPlay(u.key) && !hidden(u.key) && !picked.some((p) => p.key === u.key) && !taken(u.key))
     .filter((u) => !q || u.name.toLocaleLowerCase().includes(q))
     .sort((a, b) => a.name.localeCompare(b.name))
     .slice(0, 12);
@@ -276,7 +279,9 @@ function registerForm(tour) {
     if (!name) return setUi({ rError: t("needTeamName") });
     if (picked.length + 1 < L.MIN_TEAM) return setUi({ rError: t("needTeammates", { n: L.MIN_TEAM - 1 }) });
     if (tour.game === "academic" && subjects.length < 3) return setUi({ rError: t("needSubjects", { n: 3 }) });
-    const res = await L.registerTeam(tour.id, state.me, { name, members: picked, subjects });
+    // real names for the team list (the screen may show aliases to a hidden player)
+    const members = picked.map((p) => ({ ...p, name: state.usersRaw?.[p.key]?.name || p.name }));
+    const res = await L.registerTeam(tour.id, state.me, { name, members, subjects });
     setUi({ rError: res === "ok" ? "" : t("reg_" + res), rMembers: [], rSubjects: [] });
   };
   return html`<form class="card t-form" @submit=${submit}>
@@ -393,5 +398,5 @@ export function homeCard() {
 
 export const hasMedals = () => Object.keys(ts.medals).length > 0;
 export function watchMedals() {
-  return db.on("medals", (m) => ((ts.medals = m || {}), rerender()));
+  return db.on("medals", (m) => ((ts.medals = maskMedals(m || {})), rerender()));
 }

@@ -14,6 +14,9 @@
 // through transactions with guards, so it doesn't matter which browser does a step.
 import { db, arr } from "../db.js";
 import { shuffle } from "../lib.js";
+// Namespace import with fallback: a browser with an older cached admins.js keeps working.
+import * as admins from "../admins.js";
+const publicName = (me) => admins.publicName?.(me) ?? me.name;
 
 export const QUIZ_GAMES = ["trivia", "academic"];
 export const MIN_TEAM = 2;
@@ -46,7 +49,7 @@ export async function createTournament(me, f) {
       cur
         ? undefined
         : {
-            id, title: f.title, game: f.game, organizer: me.key, organizerName: me.name, startAt: f.startAt,
+            id, title: f.title, game: f.game, organizer: me.key, organizerName: publicName(me), startAt: f.startAt,
             maxTeams: f.maxTeams, cats: f.game === "trivia" ? f.cats : null, createdAt: db.now(), status: "registration",
           }
     );
@@ -65,7 +68,7 @@ export async function registerTeam(tid, me, { name, members, subjects }) {
     const team = {
       name: name.trim().slice(0, 20), captain: me.key, status: "pending", createdAt: db.now(),
       subjects: t.game === "academic" ? subjects : null,
-      members: { [me.key]: { name: me.name, confirmed: true } },
+      members: { [me.key]: { name: publicName(me), confirmed: true } },
     };
     for (const m of members) team.members[m.key] = { name: m.name, confirmed: false };
     t.teams = { ...(t.teams || {}), [newId(6)]: team };

@@ -12,18 +12,21 @@ import * as tournamentView from "./tournament/view.js";
 import { chatBox } from "./chat.js";
 import { meetPlayers, arrivals, checkArrival, arrivalChecked } from "./players.js";
 import { recordLastGame } from "./history.js";
+import { maskUsers, maskRoom, maskScores, maskTournaments, maskInvite } from "./mask.js";
 import * as tournamentLogic from "./tournament/logic.js";
 // Namespace import: a browser that still has an older cached admins.js keeps working.
 import * as admins from "./admins.js";
 const { isAdmin } = admins;
 const HIDDEN_ONLINE = admins.HIDDEN_ONLINE || [];
 const canPlay = (key) => admins.canPlay?.(key) ?? true;
+const onBoards = (key) => admins.onBoards?.(key) ?? canPlay(key);
+const publicName = (me) => admins.publicName?.(me) ?? me.name;
 
 const GAMES = { footballer, trivia, academic, teamnation, auction, yokak };
 
 // Set by scripts/release.py. If version.json on the server is newer, this browser still runs
 // cached old files: re-download them and reload once.
-export const APP_VERSION = "20261026-191419";
+export const APP_VERSION = "20261027-143419";
 async function updateIfNeeded() {
   try {
     const info = await (await fetch("version.json", { cache: "no-store" })).json();
@@ -113,11 +116,12 @@ function watchPresence() {
   presenceOff = [];
   if (!state.me) return;
   checkArrival(state.me.key); // "Ben geldim" for Meet the Players members
-  presenceOff.push(db.on("users", (u) => ((state.users = u || {}), rerender())));
-  presenceOff.push(db.on("tournaments", (v) => ((state.tournaments = v || {}), rerender())));
+  // Hidden players see others as player2, player3… (mask.js); state.usersRaw keeps the real names.
+  presenceOff.push(db.on("users", (u) => ((state.usersRaw = u || {}), (state.users = maskUsers(state.usersRaw)), rerender())));
+  presenceOff.push(db.on("tournaments", (v) => ((state.tournaments = maskTournaments(v || {})), rerender())));
   presenceOff.push(
     db.on(`users/${state.me.key}/invite`, (inv) => {
-      state.invite = inv && db.now() - inv.t < INVITE_MS ? inv : null;
+      state.invite = inv && db.now() - inv.t < INVITE_MS ? maskInvite(inv) : null;
       rerender();
     })
   );
@@ -140,7 +144,7 @@ function whereText(where) {
 
 async function sendInvite(key) {
   const [game, code] = state.route;
-  await db.update(`users/${key}`, { invite: { from: state.me.key, fromName: state.me.name, game, code, t: db.now() } });
+  await db.update(`users/${key}`, { invite: { from: state.me.key, fromName: publicName(state.me), game, code, t: db.now() } });
   setUi({ invited: { ...(state.ui.invited || {}), [key]: true } });
 }
 
@@ -228,7 +232,7 @@ async function onRoute() {
   heartbeat();
   if (!game) {
     updateIfNeeded();
-    unsub.push(db.on("scores", (s) => ((state.leaderboard = s || {}), rerender())));
+    unsub.push(db.on("scores", (s) => ((state.leaderboard = maskScores(s || {})), rerender())));
     unsub.push(tournamentView.watchMedals());
     cleanupRooms(Object.keys(GAMES));
   } else if (game === "tournaments") {
@@ -238,7 +242,7 @@ async function onRoute() {
   } else if (GAMES[game]?.pages?.[code]) {
     unsub.push(...(GAMES[game].pages[code].enter?.() || []));
   } else if (GAMES[game] && !code) {
-    unsub.push(watchRooms(game, (list) => ((state.rooms = list), rerender())));
+    unsub.push(watchRooms(game, (list) => ((state.rooms = list.map(maskRoom)), rerender())));
   } else if (GAMES[game] && code && !canPlay(state.me.key)) {
     // admin-only account: body() shows a note instead of the room (no joining or watching)
   } else if (GAMES[game] && code) {
@@ -264,7 +268,7 @@ async function onRoute() {
           if (inRoster && room.status === "lobby") joinRoom(game, code, state.me, GAMES[game].MAX_PLAYERS);
           else spectateRoom(game, code, state.me);
         }
-        state.room = room;
+        state.room = maskRoom(room); // the screen may show aliases; saving code below gets the real room
         if (!room) state.error = t("roomNotFound");
         GAMES[game].onRoom?.(room, code);
         recordLastGame(game, room);
@@ -460,7 +464,7 @@ function signupsView() {
 
 function homeView() {
   const games = Object.keys(GAMES).filter((g) => !GAMES[g].noScores);
-  const rows = Object.entries(state.leaderboard || {}).filter(([key]) => canPlay(key)).map(([key, s]) => {
+  const rows = Object.entries(state.leaderboard || {}).filter(([key]) => onBoards(key)).map(([key, s]) => {
     const name = games.map((g) => s[g]?.name).find(Boolean) || key;
     const pts = games.map((g) => s[g]?.points || 0);
     const wins = games.reduce((sum, g) => sum + (s[g]?.wins || 0), 0);

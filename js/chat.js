@@ -5,6 +5,9 @@ import { state } from "./app.js";
 import { db } from "./db.js";
 import { t } from "./i18n.js";
 import { html, nothing, isSpectator } from "./lib.js";
+// Namespace import with fallback: a browser with an older cached admins.js keeps working.
+import * as admins from "./admins.js";
+const publicName = (me) => admins.publicName?.(me) ?? me.name;
 
 export const MAX_LEN = 200;
 const KEEP = 100; // older messages are removed
@@ -22,7 +25,7 @@ async function send(game, room, text) {
   const id = db.now().toString(36) + Math.random().toString(36).slice(2, 6);
   await db.set(`rooms/${game}/${room.code}/chat/${id}`, {
     k: me.key,
-    n: me.name,
+    n: publicName(me),
     text,
     t: db.now(),
     ...(isSpectator(room, me.key) ? { w: true } : {}),

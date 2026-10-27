@@ -2,6 +2,9 @@
 export { html, render, nothing } from "https://cdn.jsdelivr.net/npm/lit-html@3.1.4/lit-html.js";
 import { db, arr } from "./db.js";
 import { getLang } from "./i18n.js";
+// Namespace import with fallback: a browser with an older cached admins.js keeps working.
+import * as admins from "./admins.js";
+const publicName = (me) => admins.publicName?.(me) ?? me.name;
 
 export { arr };
 
@@ -59,7 +62,7 @@ export async function createRoom(game, me, extra = {}) {
     const code = Array.from({ length: 5 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join("");
     const now = db.now();
     const r = await db.tx(`rooms/${game}/${code}`, (cur) =>
-      cur ? undefined : { code, host: me.key, status: "lobby", createdAt: now, updatedAt: now, players: { [me.key]: { name: me.name, t: now } }, ...extra }
+      cur ? undefined : { code, host: me.key, status: "lobby", createdAt: now, updatedAt: now, players: { [me.key]: { name: publicName(me), t: now } }, ...extra }
     );
     if (r.committed) return code;
   }
@@ -90,7 +93,7 @@ export async function joinRoom(game, code, me, maxPlayers, extraFields = {}) {
       extraFields = { ...extraFields, team };
     }
     result = "ok";
-    room.players = { ...(room.players || {}), [me.key]: { name: me.name, t: db.now(), ...extraFields } };
+    room.players = { ...(room.players || {}), [me.key]: { name: publicName(me), t: db.now(), ...extraFields } };
     if (room.spectators) delete room.spectators[me.key];
     room.updatedAt = db.now();
     return room;
@@ -105,7 +108,7 @@ export async function spectateRoom(game, code, me) {
     if (!room) return undefined;
     result = "ok";
     if (room.players?.[me.key] || room.spectators?.[me.key]) return undefined;
-    room.spectators = { ...(room.spectators || {}), [me.key]: { name: me.name, t: db.now() } };
+    room.spectators = { ...(room.spectators || {}), [me.key]: { name: publicName(me), t: db.now() } };
     return room;
   });
   return result;
