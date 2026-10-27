@@ -12,7 +12,7 @@ import * as tournamentView from "./tournament/view.js";
 import { chatBox } from "./chat.js";
 import { meetPlayers, arrivals, checkArrival, arrivalChecked } from "./players.js";
 import { recordLastGame } from "./history.js";
-import { maskUsers, maskRoom, maskScores, maskTournaments, maskInvite } from "./mask.js";
+import { maskUsers, maskRoom, maskScores, maskTournaments, maskInvite, masking } from "./mask.js";
 import * as tournamentLogic from "./tournament/logic.js";
 // Namespace import: a browser that still has an older cached admins.js keeps working.
 import * as admins from "./admins.js";
@@ -26,7 +26,7 @@ const GAMES = { footballer, trivia, academic, teamnation, auction, yokak };
 
 // Set by scripts/release.py. If version.json on the server is newer, this browser still runs
 // cached old files: re-download them and reload once.
-export const APP_VERSION = "20261027-143419";
+export const APP_VERSION = "20261027-144603";
 async function updateIfNeeded() {
   try {
     const info = await (await fetch("version.json", { cache: "no-store" })).json();
@@ -342,6 +342,7 @@ function finishLogin(key, name) {
 // Short welcome screen with the mascot right after logging in.
 const WELCOME_MS = 2500;
 function showWelcome() {
+  if (masking()) return; // hidden players (admins.js ALIASES) skip the mascot welcome
   state.welcome = "in";
   // Skipped if the player already clicked the screen away.
   setTimeout(() => state.welcome === "in" && ((state.welcome = "out"), rerender()), WELCOME_MS);
