@@ -10,7 +10,7 @@ import { maskMedals } from "../mask.js";
 import * as admins from "../admins.js";
 const canPlay = (key) => admins.canPlay?.(key) ?? true; // tolerant of an older cached admins.js
 const onBoards = (key) => admins.onBoards?.(key) ?? canPlay(key);
-const hidden = (key) => !!admins.ALIASES?.[key];
+const hidden = (key) => !!admins.isHiddenOnline?.(key);
 
 const GAME_ICON = { trivia: "🧠", academic: "🎓" };
 const MEDAL_ICON = { gold: "🥇", silver: "🥈", bronze: "🥉" };

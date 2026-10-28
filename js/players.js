@@ -5,7 +5,9 @@ import { rerender, state } from "./app.js";
 import { db } from "./db.js";
 import { t, getLang } from "./i18n.js";
 import { html, nothing } from "./lib.js";
-import { masking } from "./mask.js";
+// Namespace import with fallback: a browser with an older cached admins.js keeps working.
+import * as admins from "./admins.js";
+const seesMeet = (key) => admins.seesMeet?.(key) ?? true;
 import { svg } from "https://cdn.jsdelivr.net/npm/lit-html@3.1.4/lit-html.js"; // SVG shapes need the svg tag
 
 /* EDIT PLAYERS HERE
@@ -66,7 +68,7 @@ export async function checkArrival(key) {
 
 const announced = new Map(); // "<user>/<arrived>" -> time it stops showing
 export function arrivals() {
-  if (masking()) return nothing; // hidden players don't see real faces and names
+  if (!seesMeet(state.me?.key)) return nothing; // switched off for this player on the admin console
   const now = db.now();
   const me = state.me?.key;
   for (const p of PEOPLE) {
@@ -177,7 +179,7 @@ function card() {
 }
 
 export function meetPlayers() {
-  if (masking()) return nothing; // hidden players don't see real faces and names
+  if (!seesMeet(state.me?.key)) return nothing; // switched off for this player on the admin console
   return html`<h2>👋 ${t("meetPlayers")}</h2>
     <div class="mp">
       <div class="mp-scene">

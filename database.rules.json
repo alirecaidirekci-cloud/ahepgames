@@ -32,6 +32,10 @@
       ".read": "auth != null",
       "$t": { ".write": "auth != null" }
     },
+    "settings": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
     "medals": {
       ".read": "auth != null",
       "$user": { ".write": "auth != null" }

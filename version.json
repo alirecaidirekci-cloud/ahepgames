@@ -1,5 +1,5 @@
 {
- "v": "20261027-145028",
+ "v": "20261028-140816",
  "files": [
   "css/style.css",
   "data/academic/business.json",
@@ -30,6 +30,7 @@
   "js/academic/bank.js",
   "js/academic/logic.js",
   "js/academic/view.js",
+  "js/admin.js",
   "js/admins.js",
   "js/app.js",
   "js/auction/logic.js",

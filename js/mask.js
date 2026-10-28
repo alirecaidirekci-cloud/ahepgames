@@ -1,4 +1,5 @@
-// Hidden players (admins.js ALIASES) see everyone else as "player2", "player3"…
+// Players with "sees everyone hidden" (seesMasked, set on the admin console) see everyone else as
+// "player2", "player3"… (people with an alias are shown by their alias).
 // Only what their screen shows is masked: game code that saves data (scores, medals, tournament
 // teams) keeps working with the real data, so masked names never reach the database.
 // Numbers follow sign-up order, so the same person keeps the same number between visits.
@@ -6,24 +7,28 @@ import { state } from "./app.js";
 // Namespace import with fallback: a browser with an older cached admins.js keeps working.
 import * as admins from "./admins.js";
 
-export const masking = () => !!admins.ALIASES?.[state.me?.key];
+export const masking = () => !!admins.seesMasked?.(state.me?.key);
+const aliasOf = (key) => admins.aliasOf?.(key) || null;
 
 let numbers = {}; // key -> "playerN"
+let next = 2;
 export function setUsers(raw) {
-  const aliases = admins.ALIASES || {};
   const others = Object.entries(raw || {})
-    .filter(([k]) => k !== state.me?.key && !aliases[k])
+    .filter(([k]) => k !== state.me?.key && !aliasOf(k))
     .sort((a, b) => (a[1].createdAt || Infinity) - (b[1].createdAt || Infinity) || a[0].localeCompare(b[0]));
+  // numbers start after the aliases already handed out (player1, player2… of hidden players)
+  const taken = Object.keys(raw || {}).map(aliasOf).filter(Boolean).map((a) => Number(a.replace(/\D/g, "")) || 0);
+  const start = Math.max(1, ...taken) + 1;
   numbers = {};
-  // player1 is taken by the first hidden player; the others start at player2
-  others.forEach(([k], i) => (numbers[k] = `player${i + 2}`));
+  others.forEach(([k], i) => (numbers[k] = `player${i + start}`));
+  next = start + others.length;
 }
 
 // The name to show for <key> (falls back to the next free number for people not in users/).
 export function shownName(key, name) {
   if (!masking() || !key || key === state.me?.key) return name;
-  if (admins.ALIASES?.[key]) return admins.ALIASES[key];
-  numbers[key] ??= `player${Object.keys(numbers).length + 2}`;
+  if (aliasOf(key)) return aliasOf(key);
+  numbers[key] ??= `player${next++}`;
   return numbers[key];
 }
 

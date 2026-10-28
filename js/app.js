@@ -14,10 +14,12 @@ import { meetPlayers, arrivals, checkArrival, arrivalChecked } from "./players.j
 import { recordLastGame } from "./history.js";
 import { maskUsers, maskRoom, maskScores, maskTournaments, maskInvite, masking } from "./mask.js";
 import * as tournamentLogic from "./tournament/logic.js";
+import * as adminConsole from "./admin.js";
 // Namespace import: a browser that still has an older cached admins.js keeps working.
 import * as admins from "./admins.js";
 const { isAdmin } = admins;
-const HIDDEN_ONLINE = admins.HIDDEN_ONLINE || [];
+const hiddenOnline = (key) => admins.isHiddenOnline?.(key) ?? (admins.HIDDEN_ONLINE || []).includes(key);
+const showsWelcome = (key) => admins.showsWelcome?.(key) ?? !masking();
 const canPlay = (key) => admins.canPlay?.(key) ?? true;
 const onBoards = (key) => admins.onBoards?.(key) ?? canPlay(key);
 const publicName = (me) => admins.publicName?.(me) ?? me.name;
@@ -26,7 +28,7 @@ const GAMES = { footballer, trivia, academic, teamnation, auction, yokak };
 
 // Set by scripts/release.py. If version.json on the server is newer, this browser still runs
 // cached old files: re-download them and reload once.
-export const APP_VERSION = "20261027-145028";
+export const APP_VERSION = "20261028-140816";
 async function updateIfNeeded() {
   try {
     const info = await (await fetch("version.json", { cache: "no-store" })).json();
@@ -110,6 +112,26 @@ setInterval(heartbeat, 30 * 1000);
 setInterval(() => state.me && tournamentLogic.runDue(), 8 * 1000);
 window.addEventListener("pagehide", () => state.me && db.update(`users/${state.me.key}`, { lastActive: 0 }));
 
+// Per-player settings from the admin console (admins.js). Loaded before the first screen so a
+// hidden player never sees real names, even for a moment.
+let settingsOff = null;
+async function loadSettings() {
+  settingsOff?.();
+  settingsOff = null;
+  if (!state.me) return;
+  admins.setPlayerSettings?.((await db.get("settings/players").catch(() => null)) || {});
+  let mine = JSON.stringify(admins.playerSettings?.(state.me.key) || {});
+  let first = true; // the first callback repeats what was just loaded
+  settingsOff = db.on("settings/players", (v) => {
+    admins.setPlayerSettings?.(v || {});
+    if (first) return void (first = false);
+    const now = JSON.stringify(admins.playerSettings?.(state.me?.key) || {});
+    // this viewer's own switches changed, or they see others masked (aliases may have moved): redo the screens
+    if (now !== mine || masking()) ((mine = now), watchPresence(), onRoute());
+    else rerender();
+  });
+}
+
 let presenceOff = [];
 function watchPresence() {
   presenceOff.forEach((off) => off());
@@ -129,13 +151,13 @@ function watchPresence() {
 
 export function onlineUsers() {
   return Object.entries(state.users)
-    .filter(([key, u]) => isOnline(u) && !u.pending && (!HIDDEN_ONLINE.includes(key) || key === state.me?.key))
+    .filter(([key, u]) => isOnline(u) && !u.pending && (!hiddenOnline(key) || key === state.me?.key))
     .map(([key, u]) => ({ key, ...u }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 // Where someone is, in words: home page, a game's room list, or a room.
-function whereText(where) {
+export function whereText(where) {
   const [game, code] = (where || "").split("/");
   if (!game || !GAMES[game]) return t("whereHome");
   if (!code || GAMES[game].pages?.[code]) return t(game);
@@ -237,7 +259,7 @@ async function onRoute() {
     cleanupRooms(Object.keys(GAMES));
   } else if (game === "tournaments") {
     unsub.push(...tournamentView.enter(state.route));
-  } else if (game === "signups") {
+  } else if (game === "admin" || game === "signups") {
     // state.users is already watched (presence)
   } else if (GAMES[game]?.pages?.[code]) {
     unsub.push(...(GAMES[game].pages[code].enter?.() || []));
@@ -329,11 +351,12 @@ async function login(e) {
   rerender();
 }
 
-function finishLogin(key, name) {
+async function finishLogin(key, name) {
   state.loginStep = null;
   state.me = { key, name };
   store.setItem("fg-user", JSON.stringify(state.me));
   state.error = "";
+  await loadSettings();
   showWelcome();
   watchPresence();
   onRoute();
@@ -342,7 +365,7 @@ function finishLogin(key, name) {
 // Short welcome screen with the mascot right after logging in.
 const WELCOME_MS = 2500;
 function showWelcome() {
-  if (masking()) return; // hidden players (admins.js ALIASES) skip the mascot welcome
+  if (!showsWelcome(state.me?.key)) return; // switched off for this player on the admin console
   state.welcome = "in";
   // Skipped if the player already clicked the screen away.
   setTimeout(() => state.welcome === "in" && ((state.welcome = "out"), rerender()), WELCOME_MS);
@@ -363,6 +386,8 @@ function logout() {
   if (state.me) db.update(`users/${state.me.key}`, { lastActive: 0 });
   store.removeItem("fg-user");
   state.me = null;
+  settingsOff?.();
+  settingsOff = null;
   watchPresence(); // stops listening for the old user's invites
   go("#/");
   onRoute();
@@ -390,7 +415,7 @@ function body() {
   const [game, code] = state.route;
   if (!game) return homeView();
   if (game === "tournaments") return tournamentView.view(state.route);
-  if (game === "signups") return signupsView();
+  if (game === "admin" || game === "signups") return adminConsole.view();
   if (!GAMES[game]) return html`<p>404 · <a href="#/">${t("back")}</a></p>`;
   if (!code) return roomListView(game);
   const page = GAMES[game].pages?.[code];
@@ -429,38 +454,11 @@ function loginView() {
   `;
 }
 
-// ---------- sign-up approval (admins only, see admins.js) ----------
-const pendingSignups = () =>
-  Object.entries(state.users)
-    .filter(([, u]) => u?.pending)
-    .map(([key, u]) => ({ key, ...u }))
-    .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-
+// Admin's home notice: a link to the console, with the number of sign-ups waiting.
 function signupNotice() {
-  const n = isAdmin(state.me) ? pendingSignups().length : 0;
-  return n ? html`<div class="notices"><a class="notice" href="#/signups">🆕 ${t("signupNotice", { n })}</a></div>` : nothing;
-}
-
-function signupsView() {
-  if (!isAdmin(state.me)) return html`<p>404 · <a href="#/">${t("back")}</a></p>`;
-  const list = pendingSignups();
-  const approve = (key) => db.update(`users/${key}`, { pending: null });
-  const reject = (u) => setUi({ confirm: { text: t("signupRejectConfirm", { name: u.name }), yes: () => db.set(`users/${u.key}`, null) } });
-  return html`
-    <a href="#/" class="back">${t("back")}</a>
-    <h2>🆕 ${t("signupsTitle")}</h2>
-    ${list.length
-      ? html`<div class="room-list">
-          ${list.map(
-            (u) => html`<div class="card room-item">
-              <b>${u.name}</b><span class="hint">${u.createdAt ? new Date(u.createdAt).toLocaleString(getLang() === "tr" ? "tr-TR" : "en-US") : ""}</span>
-              <button class="small primary" @click=${() => approve(u.key)}>✅ ${t("approve")}</button>
-              <button class="small" @click=${() => reject(u)}>✖ ${t("reject")}</button>
-            </div>`
-          )}
-        </div>`
-      : html`<p class="hint">${t("noSignups")}</p>`}
-  `;
+  if (!isAdmin(state.me)) return nothing;
+  const n = adminConsole.pendingSignups().length;
+  return html`<div class="notices"><a class="notice" href="#/admin">🛡️ ${t("adminConsole")}${n ? " · 🆕 " + t("signupNotice", { n }) : ""}</a></div>`;
 }
 
 function homeView() {
@@ -626,6 +624,7 @@ setInterval(() => {
     state.me = JSON.parse(store.getItem("fg-user"));
   } catch {}
   root.textContent = "";
+  await loadSettings();
   watchPresence();
   window.addEventListener("hashchange", onRoute);
   onRoute();
