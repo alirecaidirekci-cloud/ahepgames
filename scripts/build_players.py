@@ -284,6 +284,7 @@ def build(list_only=False):
                 if k in name and code not in pos:
                     pos.append(code)
         nat = NAT_FIX.get(pid) or next((n for n in by_rank(e, "P1532") + by_rank(e, "P27") if ids_of(L.get(n, {"claims": {}}), "P30")), None)
+        nat = NAT_MERGE.get(nat, nat)
         if not nat:
             return None
         clubs, leagues, spells = [], [], []
@@ -315,7 +316,7 @@ def build(list_only=False):
             active = False
         nl = L.get(nat, {})
         conts = [CONT[x] for x in ids_of(nl, "P30") if x in CONT] if nl else []
-        cont = "EU" if "EU" in conts else (conts[0] if conts else None)
+        cont = CONT_FIX.get(nat) or ("EU" if "EU" in conts else (conts[0] if conts else None))
         a = app.get(pid)
         return {
             "id": pid,
@@ -359,6 +360,10 @@ def build(list_only=False):
             chosen.append(p)
             have.add(pid)
             fsl_added += 1
+    extra = select_extra(chosen, convert, raw.get("extra", []))
+    for p in extra:
+        p["extra"] = True
+    chosen += extra
     if list_only:
         for p in chosen:
             print("%s|%s|%s|%s" % (p["id"], p["name"], lab(L.get(p["nat"], {}), "en"), p["born"]))
@@ -378,7 +383,7 @@ def build(list_only=False):
         a = p.pop("app") or []
         p["fame"] = p.pop("links")
         hair, beard, skin, wc, pos = (a + ["", "", "", "", ""])[:5]
-        if pos and not p["pos"]:
+        if pos and (not p["pos"] or p.get("extra")):  # extra players: the hand-set position wins
             p["pos"] = [pos]
         p.update({"hair": hair or None, "beard": beard == "1", "skin": skin or None, "wc": wc == "1"})
         # Single main role for the auction: GK, DF, MF, W (winger) or ST (striker).
@@ -391,6 +396,79 @@ def build(list_only=False):
     missing = [p["name"] for p in out_players if not p["hair"]]
     print("players", len(out_players), "turkish added", tur_added, "missing appearance", len(missing))
     print("leagues", len(dict_["leagues"]), "countries", len(dict_["countries"]), "clubs", len(dict_["clubs"]))
+
+
+# Same country under two Wikidata items (Kingdom of the Netherlands, Empire of Japan) -> one.
+NAT_MERGE = {"Q29999": "Q55", "Q188712": "Q17"}
+CONT_FIX = {"Q804": "NA", "Q79": "AF"}  # Panama, Egypt
+
+# Size of each group after the extra players are added (Turkey separately from the rest of Europe).
+EXTRA_TARGETS = {"TR": 300, "EU": 580, "SA": 200, "AF": 170, "AS": 115, "NA": 90, "OC": 20}
+POS_SHARE = {"GK": 0.12, "DF": 0.28, "MF": 0.30, "FW": 0.30}
+ERA_SHARE = {0: 0.15, 1: 0.15, 2: 0.35, 3: 0.35}  # born before 1970, 1970s, 1980s, 1990 or later
+MIN_COUNTRY = {"EU": 30}  # per group, default 10; # countries with fewer possible players get no extra players (they'd stay tiny groups)
+MAX_COUNTRY_SHARE = {"AS": 0.35}  # Japan would otherwise take most of Asia
+# Hand-picked extra candidates that are not wanted: actors, people famous mainly as coaches,
+# club founders from around 1900 nobody would recognise.
+EXCLUDE_EXTRA = set("""Q320218 Q308124 Q431216 Q1336179 Q31575 Q218369 Q316026 Q313209 Q360687 Q342698 Q1336203 Q194311
+Q115500 Q324484 Q296036 Q8072990 Q349585 Q358718 Q123937 Q331991 Q541938 Q3052128 Q2604671 Q30089624 Q138484 Q2403912
+Q3128061 Q4705140 Q928090 Q4879387 Q1989888 Q6084804 Q6386825 Q431445 Q319517 Q699557 Q26532 Q919026 Q1020698 Q562157
+Q2217087 Q1378780 Q297499 Q702233 Q6075572 Q6660987""".split())
+EXCLUDE_EXTRA_NAT = {"Q145"}  # "United Kingdom": can't tell England / Scotland / Wales apart
+
+
+def era_of(born):
+    return 0 if born < 1970 else 1 if born < 1980 else 2 if born < 1990 else 3
+
+
+def select_extra(chosen, convert, cand_ids):
+    """Extra players so that every continent, country, position and era has a fair number of players:
+    each continent is filled up to EXTRA_TARGETS; inside it the next slot goes to the country that is
+    furthest behind its share (bigger football countries get bigger shares), and inside a country to
+    the player who best fills the missing positions / eras / active-retired, then the most famous."""
+    import math
+    group = lambda p: "TR" if p["nat"] == "Q43" else p["cont"]
+    have = {p["id"] for p in chosen}
+    cands = {}
+    for pid in cand_ids:
+        if pid in have or pid in EXCLUDE_EXTRA:
+            continue
+        p = convert(pid)
+        if p and p["name"] and p["cont"] and p["pos"] and p["links"] >= 8 and p["nat"] not in EXCLUDE_EXTRA_NAT:
+            cands[pid] = p
+            have.add(pid)
+    by_nat = {}
+    for p in sorted(cands.values(), key=lambda p: -p["links"]):
+        by_nat.setdefault(p["nat"], []).append(p)
+    nat_group = {n: group(ps[0]) for n, ps in by_nat.items()}
+    count = lambda pl, f: sum(1 for p in pl if f(p))
+    extra = []
+    for g, target in EXTRA_TARGETS.items():
+        cur = [p for p in chosen if group(p) == g]
+        nats = {n for n in by_nat if nat_group[n] == g}
+        nats = {n for n in nats if len(by_nat[n]) + count(cur, lambda p: p["nat"] == n) >= MIN_COUNTRY.get(g, 10)}
+        weight = {n: math.sqrt(len(by_nat[n]) + count(cur, lambda p: p["nat"] == n)) for n in nats}
+        while len(cur) < target:
+            open_ = [n for n in nats if by_nat[n] and count(cur, lambda p: p["nat"] == n) < MAX_COUNTRY_SHARE.get(g, 1) * target]
+            if not open_:
+                break
+            n = min(open_, key=lambda n: count(cur, lambda p: p["nat"] == n) / weight[n])
+            mine = [p for p in cur if p["nat"] == n]
+            size = len(mine) + 1
+
+            def need(p):
+                pos = p["pos"][0]
+                d = (POS_SHARE[pos] * size - count(mine, lambda x: x["pos"][:1] == [pos])) * 2
+                d += ERA_SHARE[era_of(p["born"])] * size - count(mine, lambda x: era_of(x["born"]) == era_of(p["born"]))
+                d += 0.5 * size - count(mine, lambda x: x["active"] == p["active"])
+                return max(d, 0) + math.log(p["links"]) / 2
+
+            best = max(by_nat[n][:40], key=need)
+            by_nat[n].remove(best)
+            cur.append(best)
+            extra.append(best)
+        print("extra", g, "now", len(cur))
+    return extra
 
 
 # Legends of the Turkish league who must be in, whatever their worldwide fame.
@@ -445,6 +523,54 @@ def add_superlig():
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "addsl":
     add_superlig()
+
+
+
+# ---------- bigger pool for Futbolcuyu Bul (players marked "extra"; the auction keeps the old list) ----------
+# Continents that the worldwide fame ranking barely covers get their own candidate lists.
+EXPAND_CONTINENTS = {"AF": "Q15", "AS": "Q48", "NA": "Q49", "OC": "Q538", "SA": "Q18"}
+
+
+def expand_fetch():
+    """Fetches candidates for the extra players into raw.json: everyone in pool_raw.json (most famous
+    worldwide + Süper Lig) plus the most famous players of each non-European continent."""
+    pool = json.load(open(os.path.join(ROOT, "scripts", "pool_raw.json"), encoding="utf-8"))
+    raw = json.load(open(RAW, encoding="utf-8"))
+    by_cont = {}
+    for code, q in EXPAND_CONTINENTS.items():
+        rows = sparql("""SELECT ?p ?l WHERE { ?c wdt:P30 wd:%s. ?p wdt:P1532 ?c; wdt:P106 wd:Q937857; wikibase:sitelinks ?l.
+          FILTER(?l > 6) } ORDER BY DESC(?l) LIMIT 600""" % q)
+        by_cont[code] = list(dict.fromkeys(b["p"]["value"].rsplit("/", 1)[-1] for b in rows))
+        print(code, len(by_cont[code]))
+        time.sleep(65)
+    cands = list(dict.fromkeys(pool["glob"] + pool["sl"] + [p for ids in by_cont.values() for p in ids]))
+    new = [pid for pid in cands if pid not in raw["players"]]
+    print("candidates", len(cands), "to fetch", len(new))
+    props = ["P569", "P570", "P2048", "P18", "P21", "P413", "P1532", "P27", "P166", "P54"]
+    slim = lambda d, ps: {k: {"labels": v.get("labels", {}), "claims": {p: v.get("claims", {}).get(p, []) for p in ps},
+                              "sitelinks": len(v.get("sitelinks", {}))} for k, v in d.items()}
+    raw["players"].update(slim(entities(new, "labels|claims|sitelinks"), props))
+    club_ids, misc = set(), set()
+    for pid in new:
+        e = raw["players"].get(pid)
+        if not e:
+            continue
+        club_ids.update(claim_ids(e, "P54"))
+        for prop in ("P413", "P1532", "P27"):
+            misc.update(claim_ids(e, prop))
+    clubs = entities([c for c in club_ids if c not in raw["clubs"]], "labels|claims")
+    raw["clubs"].update(slim(clubs, ["P118", "P31"]))
+    for e in clubs.values():
+        misc.update(claim_ids(e, "P118"))
+    raw["labels"].update(slim(entities([m for m in misc if m not in raw["labels"]], "labels|claims"), ["P30"]))
+    raw["extra"] = cands
+    with open(RAW, "w", encoding="utf-8") as f:
+        json.dump(raw, f, ensure_ascii=False)
+    print("saved", RAW)
+
+
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "expand":
+    expand_fetch()
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] in ("build", "list"):
     build(list_only=sys.argv[1] == "list")

@@ -23,7 +23,7 @@ const roleName = (r) => t("role_" + r);
 function drawPairs() {
   const pairs = {};
   for (const role of logic.POSITIONS) {
-    const pool = data.players().filter((p) => p.role === role).sort((a, b) => b.fame - a.fame);
+    const pool = data.players().filter((p) => p.role === role && !p.extra).sort((a, b) => b.fame - a.fame);
     const third = Math.floor(pool.length / 3);
     const top = shuffle(pool.slice(0, third))[0];
     const moderate = shuffle(pool.slice(third, 2 * third))[0];
