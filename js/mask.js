@@ -1,35 +1,63 @@
 // Players with "sees everyone hidden" (seesMasked, set on the admin console) see everyone else as
-// "player2", "player3"… (people with an alias are shown by their alias).
+// random "playerN" names (people with an alias are shown by their alias).
 // Only what their screen shows is masked: game code that saves data (scores, medals, tournament
 // teams) keeps working with the real data, so masked names never reach the database.
-// Numbers follow sign-up order, so the same person keeps the same number between visits.
+// The numbers are random and new at every login / new visit (new tab or window); within one visit
+// (also after a refresh) the same person keeps the same number. Kept in sessionStorage.
 import { state } from "./app.js";
 // Namespace import with fallback: a browser with an older cached admins.js keeps working.
 import * as admins from "./admins.js";
 
 export const masking = () => !!admins.seesMasked?.(state.me?.key);
 const aliasOf = (key) => admins.aliasOf?.(key) || null;
+const MAX = 99;
+const STORE = "fg-mask-names";
 
-let numbers = {}; // key -> "playerN"
-let next = 2;
-export function setUsers(raw) {
-  const others = Object.entries(raw || {})
-    .filter(([k]) => k !== state.me?.key && !aliasOf(k))
-    .sort((a, b) => (a[1].createdAt || Infinity) - (b[1].createdAt || Infinity) || a[0].localeCompare(b[0]));
-  // numbers start after the aliases already handed out (player1, player2… of hidden players)
-  const taken = Object.keys(raw || {}).map(aliasOf).filter(Boolean).map((a) => Number(a.replace(/\D/g, "")) || 0);
-  const start = Math.max(1, ...taken) + 1;
+let numbers = null; // key -> "playerN" for this visit
+let owner = null; // whose numbers they are
+function load() {
+  if (numbers && owner === state.me?.key) return;
+  owner = state.me?.key;
   numbers = {};
-  others.forEach(([k], i) => (numbers[k] = `player${i + start}`));
-  next = start + others.length;
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(STORE) || "null");
+    if (saved?.me === owner) numbers = saved.numbers || {};
+  } catch {}
+}
+function save() {
+  try {
+    sessionStorage.setItem(STORE, JSON.stringify({ me: owner, numbers }));
+  } catch {}
+}
+// A new login starts with fresh random numbers.
+export function resetMaskNames() {
+  numbers = {};
+  owner = state.me?.key;
+  save();
 }
 
-// The name to show for <key> (falls back to the next free number for people not in users/).
+const aliasesInUse = () => new Set(Object.values(admins.allPlayerSettings?.() || {}).map((s) => s?.alias).filter(Boolean));
+function freshNumber() {
+  const used = new Set([...aliasesInUse(), ...Object.values(numbers)]);
+  const free = [];
+  for (let n = 1; n <= MAX; n++) if (!used.has(`player${n}`)) free.push(`player${n}`);
+  return free[Math.floor(Math.random() * free.length)] || `player${MAX + Object.keys(numbers).length + 1}`;
+}
+
+export function setUsers() {} // (numbers are handed out when a name is first shown)
+
+// The name to show for <key>.
 export function shownName(key, name) {
   if (!masking() || !key || key === state.me?.key) return name;
   if (aliasOf(key)) return aliasOf(key);
-  numbers[key] ??= `player${next++}`;
-  return numbers[key];
+  load();
+  let n = numbers[key];
+  if (!n || aliasesInUse().has(n)) {
+    // first time this visit, or a hidden player's new alias took this number: pick another
+    n = numbers[key] = freshNumber();
+    save();
+  }
+  return n;
 }
 
 const clone = (v) => (v ? structuredClone(v) : v);

@@ -29,8 +29,14 @@ export const seesMasked = (key) => !!PS[key]?.seesMasked;
 export const seesMeet = (key) => !PS[key]?.noMeet;
 export const showsWelcome = (key) => !PS[key]?.noWelcome;
 
-// The next free "playerN" for a newly aliased player.
-export function nextAlias() {
-  const used = new Set(Object.values(PS).map((s) => s?.alias).filter(Boolean));
-  for (let n = 1; ; n++) if (!used.has(`player${n}`)) return `player${n}`;
+// A random free "playerN" (1–99) for <key>: used when the admin switches an alias on, and again at
+// every login / new visit of that player (app.js), so the same person isn't always "player1".
+export const ALIAS_MAX = 99;
+export function randomAlias(key) {
+  const used = new Set(Object.entries(PS).filter(([k, s]) => k !== key && s?.alias).map(([, s]) => s.alias));
+  const free = [];
+  const current = PS[key]?.alias; // never the same as last time
+  for (let n = 1; n <= ALIAS_MAX; n++) if (!used.has(`player${n}`) && `player${n}` !== current) free.push(`player${n}`);
+  return free[Math.floor(Math.random() * free.length)] || `player${ALIAS_MAX + 1 + Object.keys(PS).length}`;
 }
+export const nextAlias = () => randomAlias(null); // kept for older callers

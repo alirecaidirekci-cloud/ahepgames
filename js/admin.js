@@ -45,7 +45,7 @@ function isOn(ps, sw) {
 }
 function toggle(key, sw, on) {
   const patch =
-    sw === "alias" ? { alias: on ? admins.nextAlias() : null }
+    sw === "alias" ? { alias: on ? admins.randomAlias(key) : null }
     : sw === "meet" ? { noMeet: on ? null : true }
     : sw === "welcome" ? { noWelcome: on ? null : true }
     : { [sw]: on || null };

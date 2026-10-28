@@ -12,7 +12,7 @@ import * as tournamentView from "./tournament/view.js";
 import { chatBox } from "./chat.js";
 import { meetPlayers, arrivals, checkArrival, arrivalChecked } from "./players.js";
 import { recordLastGame } from "./history.js";
-import { maskUsers, maskRoom, maskScores, maskTournaments, maskInvite, masking } from "./mask.js";
+import { maskUsers, maskRoom, maskScores, maskTournaments, maskInvite, masking, resetMaskNames } from "./mask.js";
 import * as tournamentLogic from "./tournament/logic.js";
 import * as adminConsole from "./admin.js";
 // Namespace import: a browser that still has an older cached admins.js keeps working.
@@ -28,7 +28,7 @@ const GAMES = { footballer, trivia, academic, teamnation, auction, yokak };
 
 // Set by scripts/release.py. If version.json on the server is newer, this browser still runs
 // cached old files: re-download them and reload once.
-export const APP_VERSION = "20261028-140816";
+export const APP_VERSION = "20261028-151421";
 async function updateIfNeeded() {
   try {
     const info = await (await fetch("version.json", { cache: "no-store" })).json();
@@ -115,11 +115,12 @@ window.addEventListener("pagehide", () => state.me && db.update(`users/${state.m
 // Per-player settings from the admin console (admins.js). Loaded before the first screen so a
 // hidden player never sees real names, even for a moment.
 let settingsOff = null;
-async function loadSettings() {
+async function loadSettings(isLogin = false) {
   settingsOff?.();
   settingsOff = null;
   if (!state.me) return;
   admins.setPlayerSettings?.((await db.get("settings/players").catch(() => null)) || {});
+  await rerollAlias(isLogin);
   let mine = JSON.stringify(admins.playerSettings?.(state.me.key) || {});
   let first = true; // the first callback repeats what was just loaded
   settingsOff = db.on("settings/players", (v) => {
@@ -130,6 +131,23 @@ async function loadSettings() {
     if (now !== mine || masking()) ((mine = now), watchPresence(), onRoute());
     else rerender();
   });
+}
+
+// A player with an alias gets a new random one at every login and every new visit (new tab or
+// window); refreshing the same tab keeps it, so the name doesn't change in the middle of a game.
+const ALIAS_SESSION = "fg-alias-for";
+async function rerollAlias(force) {
+  const me = state.me?.key;
+  if (!me || !admins.aliasOf?.(me) || !admins.randomAlias) return;
+  try {
+    if (!force && sessionStorage.getItem(ALIAS_SESSION) === me) return;
+  } catch {}
+  const alias = admins.randomAlias(me);
+  admins.setPlayerSettings({ ...admins.allPlayerSettings(), [me]: { ...admins.playerSettings(me), alias } });
+  await db.update(`settings/players/${me}`, { alias }).catch(() => {});
+  try {
+    sessionStorage.setItem(ALIAS_SESSION, me);
+  } catch {}
 }
 
 let presenceOff = [];
@@ -356,7 +374,8 @@ async function finishLogin(key, name) {
   state.me = { key, name };
   store.setItem("fg-user", JSON.stringify(state.me));
   state.error = "";
-  await loadSettings();
+  resetMaskNames(); // a new login also gets new random player numbers (mask.js)
+  await loadSettings(true);
   showWelcome();
   watchPresence();
   onRoute();
