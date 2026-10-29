@@ -112,8 +112,8 @@ function buildQuestions(data) {
 const cap = (s) => s[0].toLocaleUpperCase("tr") + s.slice(1);
 
 // Players still possible given the answered questions and wrong guesses.
-export function candidates(log) {
-  return DATA.players.filter((p) =>
+export function candidates(log, pool = DATA.players) {
+  return pool.filter((p) =>
     log.every((e) => (e.kind === "q" ? questionById(e.qid).test(p) === e.ans : e.ok || e.pid !== p.id))
   );
 }

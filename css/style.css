@@ -357,8 +357,8 @@ textarea { font: inherit; padding: 9px 12px; border-radius: 10px; border: 1px so
 .yk-crit { font-weight: 600; }
 .yk-expl { margin-top: 14px; padding: 12px 14px; border-left: 4px solid var(--yes); background: var(--bg); border-radius: 8px; }
 .yk-expl p { margin: 6px 0; }
-.yk-solo { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-.yk-solo p { margin: 4px 0 0; }
+.yk-solo, .solo-card { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.yk-solo p, .solo-card p { margin: 4px 0 0; }
 .yk-note { border-left: 4px solid var(--gold); }
 .yk-right { color: var(--yes); font-weight: 600; }
 .yk-stage { display: grid; grid-template-columns: minmax(0, 1fr) 170px; gap: 16px; align-items: start; }
