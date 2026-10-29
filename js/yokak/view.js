@@ -21,13 +21,13 @@ const LETTERS = "ABCD";
 // ---------- questions ----------
 // data/yokak.json rows: [id, mainTopic, topic, importance 1-4, difficulty, question, [4 options],
 //                        right option index, explanation, source, sourceUrl]
+// data/yokak_roles.json: {id: role letters (ROLES below)}, "*" = a core question everyone should know.
 let bankPromise = null;
 let byId = {};
 function loadBank() {
-  bankPromise ??= fetch("data/yokak.json")
-    .then((r) => r.json())
-    .then((rows) => {
-      const list = rows.map(([id, main, topic, imp, diff, q, opts, c, expl, src, url]) => ({ id, main, topic, imp, diff, q, opts, c, expl, src, url }));
+  bankPromise ??= Promise.all([fetch("data/yokak.json").then((r) => r.json()), fetch("data/yokak_roles.json").then((r) => r.json())])
+    .then(([rows, roles]) => {
+      const list = rows.map(([id, main, topic, imp, diff, q, opts, c, expl, src, url]) => ({ id, main, topic, imp, diff, q, opts, c, expl, src, url, roles: roles[id] || "" }));
       byId = Object.fromEntries(list.map((q) => [q.id, q]));
       return list;
     })
@@ -39,13 +39,40 @@ function loadBank() {
 }
 export const prepare = () => loadBank().catch(() => {});
 
-// A mixed set: 40% "Kritik" questions, the rest from all other questions, options shuffled.
+// The roles a set can be picked for (the questions each role is asked in a YÖKAK site visit).
+// "" = Karışık: all questions, as before roles existed.
+export const ROLES = [
+  ["", "🎲", "Karışık"],
+  ["U", "🏛️", "Üst Yönetim"],
+  ["D", "🎓", "Dekan / Müdür"],
+  ["B", "📋", "Bölüm Başkanı"],
+  ["A", "👩‍🏫", "Akademik Personel"],
+  ["I", "🗂️", "İdari Personel"],
+  ["K", "✅", "Kalite Komisyonu Üyesi"],
+  ["O", "🧑‍🎓", "Öğrenci"],
+];
+const roleOf = (r) => ROLES.find(([k]) => k === (r || "")) || ROLES[0];
+const roleLabel = (r) => `${roleOf(r)[1]} ${roleOf(r)[2]}`;
+const ROLE_SHARE = 0.6; // with a role: 60% that role's questions, 40% core questions for everyone
+
+// n questions from list, at least 40% of them "Kritik" when there are enough.
+function pickFrom(list, n) {
+  const a = shuffle(list.filter((q) => q.imp === 1)).slice(0, Math.ceil(n * CRITICAL_SHARE));
+  const b = shuffle(list.filter((q) => !a.includes(q))).slice(0, n - a.length);
+  return [...a, ...b];
+}
+
+// A set of n questions for the role (all questions mixed for ""), options shuffled.
 // Returns [{id, o: option order, c: index of the right answer in that order}].
-function pickSet(list, n = logic.QUESTIONS) {
-  const crit = Math.ceil(n * CRITICAL_SHARE);
-  const a = shuffle(list.filter((q) => q.imp === 1)).slice(0, crit);
-  const b = shuffle(list.filter((q) => q.imp !== 1)).slice(0, n - a.length);
-  return shuffle([...a, ...b]).map((q) => {
+function pickSet(list, role = "", n = logic.QUESTIONS) {
+  let set;
+  if (!role) set = pickFrom(list, n);
+  else {
+    const core = list.filter((q) => q.roles === "*");
+    set = pickFrom(list.filter((q) => q.roles !== "*" && q.roles.includes(role)), Math.round(n * ROLE_SHARE));
+    set.push(...pickFrom(core, n - set.length));
+  }
+  return shuffle(set).map((q) => {
     const o = shuffle([0, 1, 2, 3]);
     return { id: q.id, o, c: o.indexOf(q.c) };
   });
@@ -92,26 +119,60 @@ const stage = (content) => html`<div class="yk-stage"><img class="yk-hoca" src="
 const trOnlyNote = () =>
   getLang() === "tr" ? nothing : html`<p class="card yk-note">🇹🇷 ${t("yokakTrOnly")}</p>`;
 
+// Role buttons: "selected" is the current role, onPick(role) or null when only shown.
+const rolePicker = (selected, onPick) => html`<div class="yk-roles">
+  ${ROLES.map(
+    ([k, ic, name]) => html`<button class="small ${k === (selected || "") ? "primary" : ""}" ?disabled=${!onPick} @click=${() => onPick?.(k)}>
+      ${ic} ${name}
+    </button>`
+  )}
+</div>`;
+const roleHint = () => html`<p class="hint">
+  Rolünü seç: sorular o rolün saha ziyaretinde bilmesi gerekenlerden gelir (%60), kalanı herkesin bilmesi gereken
+  temel sorulardır (%40). Karışık: tüm sorular.
+</p>`;
+
+// The role for solo games, remembered in this browser.
+const ROLE_KEY = "fg-yokak-role";
+let soloRole = (() => {
+  try {
+    return localStorage.getItem(ROLE_KEY) || "";
+  } catch {
+    return "";
+  }
+})();
+function setSoloRole(r) {
+  soloRole = r;
+  try {
+    localStorage.setItem(ROLE_KEY, r);
+  } catch {}
+  rerender();
+}
+
 export const lobbyExtra = () => html`${splashView()} ${trOnlyNote()}
   ${admins.canPlay?.(state.me.key) === false ? nothing : soloCard()}`;
 const soloCard = () => html`
-  <div class="card yk-solo">
-    <div>
-      <b>🧑‍🎓 Tek kişilik alıştırma</b>
-      <p class="hint">${logic.QUESTIONS} soru, her cevaptan sonra açıklama. Puan tabloya yazılmaz.</p>
+  <div class="card">
+    <div class="yk-solo">
+      <div>
+        <b>🧑‍🎓 Tek kişilik alıştırma</b>
+        <p class="hint">${logic.QUESTIONS} soru, her cevaptan sonra açıklama. Puan tabloya yazılmaz.</p>
+      </div>
+      <button class="primary" @click=${() => (location.hash = "#/yokak/solo")}>Tek başına oyna</button>
     </div>
-    <button class="primary" @click=${() => (location.hash = "#/yokak/solo")}>Tek başına oyna</button>
+    ${roleHint()} ${rolePicker(soloRole, setSoloRole)}
   </div>
   <p class="hint">Ya da bir oda kur: 1v1 (her takımda 1 kişi) veya takım vs takım (her takımda 2–4 kişi).</p>`;
 
 // Question card shared by solo and multiplayer.
 // opts: {choiceOf(i) -> class names, onPick(i) or null, footer}
-function questionCard(entry, n, total, { cls, onPick, message, reveal }) {
+function questionCard(entry, n, total, { cls, onPick, message, reveal, role }) {
   const q = byId[entry.id];
   if (!q) return html`<div class="card"><p>Sorular yükleniyor…</p></div>`;
   return html`<div class="card question-card yk">
     <div class="row">
       <span class="pill">Soru ${n}/${total}</span>
+      ${role ? html`<span class="pill">${roleLabel(role)}</span>` : nothing}
       <span class="pill">${q.main}</span>
       <span class="pill diff">${DIFF_ICON[q.diff] || ""} ${q.diff}</span>
       ${q.imp === 1 ? html`<span class="pill yk-crit">⭐ Kritik</span>` : nothing}
@@ -144,7 +205,7 @@ async function newSolo() {
   solo.error = false;
   rerender();
   try {
-    solo.set = pickSet(await loadBank());
+    solo.set = pickSet(await loadBank(), soloRole);
     solo.idx = 0;
     solo.picks = [];
   } catch {
@@ -164,6 +225,7 @@ function soloView() {
     return html`${back}
       <div class="card center">
         <h2>Alıştırma bitti</h2>
+        <p class="hint">Rol: ${roleLabel(soloRole)}</p>
         <p class="big">${score >= 8 ? "🏆" : score >= 5 ? "👍" : "📚"} ${score}/${total} doğru</p>
         <button class="primary" @click=${newSolo}>🔁 Yeni ${total} soru</button>
       </div>
@@ -191,6 +253,7 @@ function soloView() {
       onPick: answered ? null : (i) => ((solo.picks[solo.idx] = i), react(i === entry.c)),
       message,
       reveal: answered,
+      role: soloRole,
     })}
     ${answered
       ? html`<div class="row end"><button class="primary" @click=${() => (solo.idx++, rerender(), scrollTo(0, 0))}>
@@ -265,7 +328,7 @@ function lobby() {
   const begin = async () => {
     setUi({ loading: true, loadError: false });
     try {
-      const set = pickSet(await loadBank());
+      const set = pickSet(await loadBank(), room.role || "");
       if (!(await act({ type: "begin", questions: set }))) throw new Error("not started");
       setUi({ loading: false });
     } catch {
@@ -301,6 +364,10 @@ function lobby() {
         bekler. Her sorudan sonra doğru cevap ve açıklama gösterilir. Puanlar genel tabloya yazılmaz.
       </p>
       <p class="hint">${mode ? html`Mod: <b>${mode}</b>` : "1v1 için her takımda 1 kişi, takım oyunu için her takımda 2–4 kişi olmalı."}</p>
+    </div>
+    <div class="card">
+      <b>Rol: ${roleLabel(room.role)}</b>
+      ${room.host === me ? html`${roleHint()} ${rolePicker(room.role, (r) => act({ type: "setRole", role: r }))}` : html`<p class="hint">Rolü kurucu seçer.</p>`}
     </div>
     ${room.host === me
       ? html`<button class="primary" ?disabled=${!ok || state.ui.loading} @click=${begin}>${state.ui.loading ? "Sorular yükleniyor…" : "Oyunu başlat"}</button>
@@ -346,6 +413,7 @@ function playing() {
       onPick: room.phase === "question" && myTeam && !mine ? (i) => act({ type: "answer", choice: i }) : null,
       message,
       reveal,
+      role: room.role,
     })}
     ${reveal && myTeam
       ? html`<div class="row end"><button class="primary" @click=${() => act({ type: "next" })}>${last ? "Sonuçları gör" : "Sonraki soru →"}</button></div>`
@@ -361,6 +429,7 @@ function ended() {
   return html`${scoreBar(room)}
     <div class="card center">
       <h2>Oyun bitti</h2>
+      <p class="hint">Rol: ${roleLabel(room.role)}</p>
       <p class="big">${w ? `🏆 ${sideName(room, w)} kazandı!` : "🤝 Berabere!"}</p>
       <table class="board">
         ${roomPlayers(room).map(

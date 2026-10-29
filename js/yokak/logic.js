@@ -50,6 +50,11 @@ export function reduce(room, a, me, now) {
       room.teamNames = { ...(room.teamNames || {}), [myTeam]: name || null };
       return room;
     }
+    case "setRole":
+      // the role the questions are picked for (view.js ROLES; "" = mixed, all questions)
+      if (!lobby || room.host !== me || typeof a.role !== "string" || a.role.length > 1) return undefined;
+      room.role = a.role || null;
+      return room;
     case "begin": {
       // a.questions: [{id, o: option order, c: index of the right answer in that order}]
       if (!lobby || room.host !== me || !sizesOk(room)) return undefined;

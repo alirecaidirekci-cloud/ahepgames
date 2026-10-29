@@ -1,5 +1,5 @@
 {
- "v": "20261028-223824",
+ "v": "20261029-091129",
  "files": [
   "css/style.css",
   "data/academic/business.json",
@@ -12,6 +12,7 @@
   "data/players.json",
   "data/pool.json",
   "data/yokak.json",
+  "data/yokak_roles.json",
   "img/apple-touch-icon.png",
   "img/favicon.png",
   "img/hoca.png",

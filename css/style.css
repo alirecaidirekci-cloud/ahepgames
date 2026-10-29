@@ -490,3 +490,5 @@ button.danger { color: var(--no); }
 .adm-legend ul { margin: 8px 0 0; padding-left: 18px; }
 .adm-legend li { margin: 4px 0; }
 @media (max-width: 400px) { .adm-list { grid-template-columns: 1fr; } }
+.yk-roles { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.yk-roles button { margin: 0; }
