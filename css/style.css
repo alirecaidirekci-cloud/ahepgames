@@ -492,3 +492,54 @@ button.danger { color: var(--no); }
 @media (max-width: 400px) { .adm-list { grid-template-columns: 1fr; } }
 .yk-roles { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .yk-roles button { margin: 0; }
+
+/* ---------- Penalty Shootout ---------- */
+.pk-scene { display: block; width: 100%; max-width: 560px; margin: 0 auto; border-radius: 12px; touch-action: manipulation; user-select: none; }
+.pk-sky1 { stop-color: #20314f; } .pk-sky2 { stop-color: #3d5a80; }
+.pk-grass { fill: #2f8a3c; } .pk-stripe { fill: #348f41; }
+.pk-line { fill: none; stroke: rgba(255,255,255,.7); stroke-width: 2; }
+.pk-spotdot { fill: #fff; }
+.pk-net line { stroke: rgba(255,255,255,.35); stroke-width: .8; }
+.pk-frame { fill: none; stroke: #fff; stroke-width: 5; stroke-linejoin: round; }
+.pk-leg { fill: #1d1d1d; } .pk-skin { fill: #e0ac7e; } .pk-glove { fill: #f2f2f2; }
+.pk-kit-k { fill: #f5c400; } .pk-kit-t { fill: #d62839; }
+.pk-ballc { fill: #fff; stroke: #222; stroke-width: 1; } .pk-ballp { fill: #222; }
+.pk-aim, .pk-aim * { stroke: #ff5252; } .pk-glovemark, .pk-glovemark * { stroke: #ffd400; }
+line.pk-aim, line.pk-glovemark, .pk-aim line, .pk-glovemark line { stroke-width: 2.5; stroke-dasharray: 6 4; }
+circle.pk-aim, circle.pk-glovemark, .pk-aim circle, .pk-glovemark circle { fill: none; stroke-width: 3; }
+.pk-set { opacity: .8; }
+.pk-input { text-align: center; }
+.pk-role { font-weight: 700; font-size: 1.1em; margin: 4px 0 8px; }
+.pk-step { margin: 8px 0; }
+.pk-stop { font-size: 1.25em; padding: 12px 36px; }
+.pk-bar { position: relative; height: 22px; max-width: 560px; margin: 10px auto 0; border-radius: 11px; background: linear-gradient(90deg, #3a4a6b, #d62839); overflow: hidden; }
+.pk-bar.reach { background: linear-gradient(90deg, #3a4a6b, #f5c400); }
+.pk-green { position: absolute; top: 0; bottom: 0; background: #2ecc71; }
+.pk-ind { position: absolute; top: -2px; bottom: -2px; width: 4px; margin-left: -2px; background: #fff; box-shadow: 0 0 4px #000; }
+.pk-board { padding: 8px 12px; }
+.pk-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+.pk-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pk-dots { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.pk-dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border, #555); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
+.pk-dot.goal { border-color: #2ecc71; } .pk-dot.miss { border-color: #e74c3c; color: #e74c3c; } .pk-dot.sd { border-style: dashed; }
+.pk-goals { width: 22px; text-align: right; font-size: 1.2em; }
+.pk-head, .pk-who { text-align: center; margin: 6px 0; }
+.pk-sd { color: var(--gold, #f5c400); }
+
+/* the kick: CSS variables set per kick on the scene (view.js kickScene) */
+.pk-anim * { transform-box: view-box; }
+.pk-run { transform-origin: 177px 236px; animation: pk-run .35s ease-in calc(0ms + var(--t0)) both; }
+.pk-ball { transform-origin: 200px 228px; animation: pk-shot .7s cubic-bezier(.2,.7,.4,1) calc(300ms + var(--t0)) both; }
+.pk-out-save .pk-ball { animation: pk-shot .7s cubic-bezier(.2,.7,.4,1) calc(300ms + var(--t0)) both, pk-rebound .6s ease-in calc(1000ms + var(--t0)) forwards; }
+.pk-dive { transform-origin: 200px 119px; animation: pk-dive .6s cubic-bezier(.3,.8,.4,1) calc(250ms + var(--t0)) both; }
+.pk-reach { fill: rgba(255,212,0,.18); stroke: #ffd400; stroke-dasharray: 4 3; opacity: 0; animation: pk-fade .4s ease calc(1100ms + var(--t0)) forwards; }
+.pk-banner { font: 900 34px system-ui, sans-serif; text-anchor: middle; fill: #fff; stroke: #000; stroke-width: 1.5; paint-order: stroke; transform-origin: 200px 34px; opacity: 0; animation: pk-pop .45s ease-out calc(1050ms + var(--t0)) forwards; }
+.pk-out-goal .pk-banner { fill: #2ecc71; } .pk-out-save .pk-banner { fill: #ffd400; } .pk-out-miss .pk-banner { fill: #ff5252; }
+.pk-out-goal .pk-net { transform-box: view-box; transform-origin: 200px 110px; animation: pk-net .5s ease-out calc(950ms + var(--t0)) both; }
+@keyframes pk-run { from { transform: none; } to { transform: translate(15px, -10px); } }
+@keyframes pk-shot { from { transform: none; } to { transform: translate(var(--dx), var(--dy)) scale(.55); } }
+@keyframes pk-rebound { from { transform: translate(var(--dx), var(--dy)) scale(.55); } to { transform: translate(var(--rx), var(--ry)) scale(.6); } }
+@keyframes pk-dive { from { transform: none; } to { transform: translate(var(--kdx), var(--kdy)) rotate(var(--krot)); } }
+@keyframes pk-fade { to { opacity: 1; } }
+@keyframes pk-pop { 0% { opacity: 0; transform: scale(.4); } 70% { opacity: 1; transform: scale(1.15); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes pk-net { 0%, 100% { transform: none; } 30% { transform: scale(1.04, 1.06); } 60% { transform: scale(.98); } }

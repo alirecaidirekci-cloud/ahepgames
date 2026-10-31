@@ -33,6 +33,11 @@ const SUMMARY = {
     const opp = players.find((k) => k !== me);
     return { result: outcome(room.result?.winner === me, false), score: `${room.scores[me] || 0}–${room.scores[opp] || 0}`, vs: names(room, [opp]) };
   },
+  penalty(room, me) {
+    const opp = Object.keys(room.players).find((k) => k !== me);
+    const g = room.result?.goals || {};
+    return { result: outcome(room.result?.winner === me, false), score: `${g[me] || 0}–${g[opp] || 0}`, vs: names(room, [opp]) };
+  },
   footballer(room, me) {
     const guessers = Object.keys(room.players).filter((k) => k !== room.picker);
     if (me === room.picker) return { result: outcome(!!room.result?.pickerWon, false), score: "", vs: names(room, guessers) };

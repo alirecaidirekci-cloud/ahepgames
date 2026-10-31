@@ -1,5 +1,5 @@
 {
- "v": "20261029-174332",
+ "v": "20261031-174203",
  "files": [
   "css/style.css",
   "data/academic/business.json",
@@ -46,6 +46,8 @@
   "js/i18n.js",
   "js/lib.js",
   "js/mask.js",
+  "js/penalty/logic.js",
+  "js/penalty/view.js",
   "js/players.js",
   "js/teamnation/logic.js",
   "js/teamnation/pool.js",

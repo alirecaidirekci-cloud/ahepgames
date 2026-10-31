@@ -8,6 +8,7 @@ import * as academic from "./academic/view.js";
 import * as teamnation from "./teamnation/view.js";
 import * as auction from "./auction/view.js";
 import * as yokak from "./yokak/view.js";
+import * as penalty from "./penalty/view.js";
 import * as tournamentView from "./tournament/view.js";
 import { chatBox } from "./chat.js";
 import { meetPlayers, arrivals, checkArrival, arrivalChecked } from "./players.js";
@@ -24,11 +25,11 @@ const canPlay = (key) => admins.canPlay?.(key) ?? true;
 const onBoards = (key) => admins.onBoards?.(key) ?? canPlay(key);
 const publicName = (me) => admins.publicName?.(me) ?? me.name;
 
-const GAMES = { footballer, trivia, academic, teamnation, auction, yokak };
+const GAMES = { footballer, trivia, academic, teamnation, auction, yokak, penalty };
 
 // Set by scripts/release.py. If version.json on the server is newer, this browser still runs
 // cached old files: re-download them and reload once.
-export const APP_VERSION = "20261029-174332";
+export const APP_VERSION = "20261031-174203";
 async function updateIfNeeded() {
   try {
     const info = await (await fetch("version.json", { cache: "no-store" })).json();
@@ -43,7 +44,7 @@ async function updateIfNeeded() {
 }
 // Home page rows: football games, quiz games and special games.
 const GAME_GROUPS = [
-  ["footballGames", ["footballer", "teamnation", "auction"]],
+  ["footballGames", ["footballer", "teamnation", "auction", "penalty"]],
   ["quizGames", ["trivia", "academic"]],
   ["specialGames", ["yokak"]],
 ];
