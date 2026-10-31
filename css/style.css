@@ -494,7 +494,7 @@ button.danger { color: var(--no); }
 .yk-roles button { margin: 0; }
 
 /* ---------- Penalty Shootout ---------- */
-.pk-scene { display: block; width: 100%; max-width: 560px; margin: 0 auto; border-radius: 12px; touch-action: manipulation; user-select: none; }
+.pk-scene { display: block; width: 100%; max-width: clamp(240px, calc((100svh - 400px) * 400 / 260), 560px); margin: 0 auto; border-radius: 12px; touch-action: manipulation; user-select: none; }
 .pk-sky1 { stop-color: #20314f; } .pk-sky2 { stop-color: #3d5a80; }
 .pk-grass { fill: #2f8a3c; } .pk-stripe { fill: #348f41; }
 .pk-line { fill: none; stroke: rgba(255,255,255,.7); stroke-width: 2; }
@@ -508,9 +508,11 @@ button.danger { color: var(--no); }
 line.pk-aim, line.pk-glovemark, .pk-aim line, .pk-glovemark line { stroke-width: 2.5; stroke-dasharray: 6 4; }
 circle.pk-aim, circle.pk-glovemark, .pk-aim circle, .pk-glovemark circle { fill: none; stroke-width: 3; }
 .pk-set { opacity: .8; }
-.pk-input { text-align: center; }
-.pk-role { font-weight: 700; font-size: 1.1em; margin: 4px 0 8px; }
-.pk-step { margin: 8px 0; }
+.pk-game { text-align: center; }
+.pk-role { font-weight: 700; font-size: 1.1em; margin: 2px 0 6px; }
+.pk-step { margin: 6px 0; min-height: 1.5em; }
+.pk-controls { padding-bottom: 8px; scroll-margin-bottom: 8px; }
+.pk-hidden { visibility: hidden; }
 .pk-stop { font-size: 1.25em; padding: 12px 36px; }
 .pk-bar { position: relative; height: 22px; max-width: 560px; margin: 10px auto 0; border-radius: 11px; background: linear-gradient(90deg, #3a4a6b, #d62839); overflow: hidden; }
 .pk-bar.reach { background: linear-gradient(90deg, #3a4a6b, #f5c400); }
@@ -518,15 +520,17 @@ circle.pk-aim, circle.pk-glovemark, .pk-aim circle, .pk-glovemark circle { fill:
 .pk-ind { position: absolute; top: -2px; bottom: -2px; width: 4px; margin-left: -2px; background: #fff; box-shadow: 0 0 4px #000; }
 .pk-board { padding: 8px 12px; scroll-margin-top: 72px; }
 .pk-ind.stopped { width: 6px; margin-left: -3px; background: #fff; animation: pk-blink .35s ease-in-out 3; }
-.pk-verdict { font-weight: 700; font-size: 1.1em; } .pk-verdict.good { color: #2ecc71; } .pk-verdict.bad { color: #ff9f43; }
+.pk-verdict { font-weight: 700; } .pk-verdict.good { color: #2ecc71; } .pk-verdict.bad { color: #ff9f43; }
 @keyframes pk-blink { 50% { opacity: .2; } }
 .pk-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
-.pk-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pk-name { text-align: left; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pk-dots { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
 .pk-dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border, #555); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
 .pk-dot.goal { border-color: #2ecc71; } .pk-dot.miss { border-color: #e74c3c; color: #e74c3c; } .pk-dot.sd { border-style: dashed; }
 .pk-goals { width: 22px; text-align: right; font-size: 1.2em; }
-.pk-head, .pk-who { text-align: center; margin: 6px 0; }
+.pk-head, .pk-who, .pk-role, .pk-step { height: 1.6em; line-height: 1.6em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pk-head, .pk-who { text-align: center; margin: 4px 0; }
+.pk-who .timer, .pk-step .pk-verdict { font-size: inherit; line-height: inherit; }
 .pk-sd { color: var(--gold, #f5c400); }
 
 /* the kick: CSS variables set per kick on the scene (view.js kickScene) */

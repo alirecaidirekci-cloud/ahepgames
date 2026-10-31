@@ -189,22 +189,36 @@ function inputView(id, role, level, submit) {
     ${step >= 1 ? svg`<line x1=${gx(inp.x)} y1="60" x2=${gx(inp.x)} y2="156" class="${mark} pk-set" />` : nothing}
     ${step === 1 ? svg`<g id="pk-my" class=${mark}><line x1="74" y1="110" x2="326" y2="110" /><circle cx=${gx(inp.x)} cy="110" r="7" /></g>` : nothing}
     ${step >= 2 ? svg`<circle cx=${gx(inp.x)} cy=${gy(inp.y)} r="7" class="${mark} pk-set" />` : nothing}`;
-  return html`<div class="pk-input">
-    <p class="pk-role">${taker ? t("pkYouShoot") : t("pkYouKeep")}</p>
-    <div class="pk-tap" @click=${doStop}>
+  return {
+    role: taker ? t("pkYouShoot") : t("pkYouKeep"),
+    scene: html`<div class="pk-tap pk-input" @click=${doStop}>
       ${scene(svg`${keeperFigure()} ${takerFigure()}<circle cx=${SPOT[0]} cy=${SPOT[1]} r="7" class="pk-ballc" />${markers}`)}
-    </div>
-    ${step >= 2
-      ? html`<div class="pk-bar ${taker ? "" : "reach"}">
-          <div class="pk-green" style="left:${(lo * 100).toFixed(1)}%; width:${((hi - lo) * 100).toFixed(1)}%"></div>
-          <div class="pk-ind ${step === 3 ? "stopped" : ""}" id="pk-ind" style=${step === 3 ? `left:${(inp.b * 100).toFixed(1)}%` : ""}></div>
-        </div>`
-      : nothing}
-    ${step === 3
-      ? html`<p class="pk-step pk-verdict ${inp.b >= lo && inp.b <= hi ? "good" : "bad"}">${verdict(taker, inp.b, lo, hi)}</p>
-          <button class="primary pk-stop" disabled>✋ ${t("pkStop")}</button>`
-      : html`<p class="pk-step"><b>${step + 1}/3</b> ${t(steps[step])}</p>
-          <button class="primary pk-stop" @click=${doStop}>✋ ${t("pkStop")}</button>`}
+    </div>`,
+    controls: controls({
+      bar:
+        step >= 2
+          ? html`<div class="pk-bar ${taker ? "" : "reach"}">
+              <div class="pk-green" style="left:${(lo * 100).toFixed(1)}%; width:${((hi - lo) * 100).toFixed(1)}%"></div>
+              <div class="pk-ind ${step === 3 ? "stopped" : ""}" id="pk-ind" style=${step === 3 ? `left:${(inp.b * 100).toFixed(1)}%` : ""}></div>
+            </div>`
+          : null,
+      text:
+        step === 3
+          ? html`<span class="pk-verdict ${inp.b >= lo && inp.b <= hi ? "good" : "bad"}">${verdict(taker, inp.b, lo, hi)}</span>`
+          : html`<b>${step + 1}/3</b> ${t(steps[step])}`,
+      onStop: step === 3 ? null : doStop,
+      button: true,
+    }),
+  };
+}
+
+// The part under the scene: bar, a line of text and the STOP button. Always the same height (hidden
+// parts keep their space), so the page never jumps between taking, waiting and watching a kick.
+function controls({ bar = null, text = "", onStop = null, button = false } = {}) {
+  return html`<div class="pk-controls">
+    ${bar || html`<div class="pk-bar pk-hidden"></div>`}
+    <p class="pk-step">${text || "\u00a0"}</p>
+    <button class="primary pk-stop ${button ? "" : "pk-hidden"}" ?disabled=${!onStop} @click=${onStop || null}>✋ ${t("pkStop")}</button>
   </div>`;
 }
 
@@ -216,14 +230,28 @@ function verdict(taker, b, lo, hi) {
 }
 const HOLD_MS = 1300; // how long the stopped bar stays on screen
 
-// Brings the scoreboard to the top of the screen once per phase (taking / watching a kick), so the
-// scene and the STOP button fit without scrolling on a phone.
+// When it's my turn to tap and the STOP button is (partly) off the screen, scroll just enough to
+// show it. The game area keeps the same height for every kick, so after the first time the button
+// stays where it is and nothing moves (unless the player scrolls away themselves).
 let scrolledFor = null;
-function scrollToGame(key) {
+function showStop(key) {
   if (scrolledFor === key) return;
   scrolledFor = key;
-  setTimeout(() => document.querySelector(".pk-board")?.scrollIntoView({ block: "start", behavior: "smooth" }), 60);
+  setTimeout(() => {
+    const ctl = document.querySelector(".pk-controls");
+    if (ctl && ctl.getBoundingClientRect().bottom > innerHeight) ctl.scrollIntoView({ block: "end" });
+  }, 150);
 }
+
+// The game area: the same blocks in the same order for every phase.
+const gameArea = (board, head, who, role, sceneEl, ctl) => html`<div class="pk-game">
+  ${board}
+  <p class="pk-head">${head}</p>
+  <p class="pk-who">${who}</p>
+  <p class="pk-role">${role || "\u00a0"}</p>
+  ${sceneEl}
+  ${ctl}
+</div>`;
 
 // Waiting / watching: the scene with both figures standing.
 const idleScene = () =>
@@ -261,47 +289,42 @@ function playView(room, me, now, nameOf, submit) {
   const idOf = (k) => `${room.code || "solo"}/${room.startedAt}/${k}`;
   // my last tap stays on screen for a moment, even when the kick is already decided
   const holdLeft = inp?.step === 3 && (inp.id === idOf(n) || inp.id === idOf(n - 1)) ? HOLD_MS - (performance.now() - inp.doneAt) : 0;
+  const board = scoreboard(room, nameOf);
+  const vs = (tk, kp) => t("pkWatchTake", { taker: nameOf(tk), keeper: nameOf(kp) });
+  const levelText = (k) =>
+    html`${k > 2 * logic.KICKS ? html`<b class="pk-sd">⚡ ${t("pkSudden")}</b> · ` : nothing}${t("pkLevel", { n: k, lv: logic.levelOf(k - 1) })}`;
+
   if (holdLeft > 0) {
     heldKick = inp.id;
     setTimeout(rerender, holdLeft + 20);
-    scrollToGame(inp.id);
-    return html`${scoreboard(room, nameOf)}
-      <p class="pk-head">${t("pkLevel", { n: Number(inp.id.split("/").pop()) + 1, lv: inp.level })}</p>
-      ${inputView(inp.id, inp.role, inp.level, submit)}`;
+    const k = Number(inp.id.split("/").pop());
+    const r = logic.roles(room, k);
+    const iv = inputView(inp.id, inp.role, inp.level, submit);
+    return gameArea(board, levelText(k + 1), vs(r.taker, r.keeper), iv.role, iv.scene, iv.controls);
   }
   const animating = last && now - last.t < logic.ANIM_MS;
   const level = logic.levelOf(n);
   const { taker, keeper } = logic.roles(room, n);
-  // the kick shown: the one being animated, or the next one to take
-  const shown = animating || room.status === "ended" ? n : n + 1;
-  const head = html`${scoreboard(room, nameOf)}
-    <p class="pk-head">
-      ${shown > 2 * logic.KICKS ? html`<b class="pk-sd">⚡ ${t("pkSudden")}</b> · ` : nothing}
-      ${t("pkLevel", { n: shown, lv: logic.levelOf(shown - 1) })}
-    </p>`;
-  scrollToGame(`${room.startedAt}/${shown}/${animating || room.status === "ended" ? "kick" : "next"}`);
   if (animating || room.status === "ended") {
-    return html`${head}
-      <p class="pk-who">${t("pkWatchTake", { taker: nameOf(last.taker), keeper: nameOf(last.keeper) })}</p>
-      ${keyed(`${room.startedAt}/${n}`, kickScene(`${room.code}/${room.startedAt}/${n}`, last, now - last.t))}`;
+    const sc = keyed(`${room.startedAt}/${n}`, kickScene(`${room.code}/${room.startedAt}/${n}`, last, now - last.t));
+    return gameArea(board, levelText(n), vs(last.taker, last.keeper), "", sc, controls());
   }
   const left = room.cur.deadline - now;
   const committed = room.cur.commit || {};
-  const timer = html`<span class="timer ${left < 8000 ? "urgent" : ""}">⏱ ${fmtTime(left)}</span>`;
+  const who = html`<span class="timer ${left < 8000 ? "urgent" : ""}">⏱ ${fmtTime(left)}</span> · ${vs(taker, keeper)}`;
   const mineRole = me === taker ? "taker" : me === keeper ? "keeper" : null;
   if (mineRole && !committed[me]) {
-    return html`${head}<p class="pk-who">${timer} · ${t("pkWatchTake", { taker: nameOf(taker), keeper: nameOf(keeper) })}</p>
-      ${inputView(`${room.code || "solo"}/${room.startedAt}/${n}`, mineRole, level, submit)}`;
+    const id = `${room.code || "solo"}/${room.startedAt}/${n}`;
+    showStop(id);
+    const iv = inputView(id, mineRole, level, submit);
+    return gameArea(board, levelText(n + 1), who, iv.role, iv.scene, iv.controls);
   }
   const other = me === taker ? keeper : taker;
-  return html`${head}
-    <p class="pk-who">${timer} · ${t("pkWatchTake", { taker: nameOf(taker), keeper: nameOf(keeper) })}</p>
-    ${idleScene()}
-    <p class="hint center">
-      ${mineRole
-        ? t("pkLocked", { name: nameOf(other) })
-        : html`⚽ ${nameOf(taker)} ${committed[taker] ? "✅" : "⏳"} · 🧤 ${nameOf(keeper)} ${committed[keeper] ? "✅" : "⏳"}`}
-    </p>`;
+  const text = mineRole
+    ? t("pkLocked", { name: nameOf(other) })
+    : html`⚽ ${nameOf(taker)} ${committed[taker] ? "✅" : "⏳"} · 🧤 ${nameOf(keeper)} ${committed[keeper] ? "✅" : "⏳"}`;
+  const role = mineRole === "taker" ? t("pkYouShoot") : mineRole === "keeper" ? t("pkYouKeep") : "";
+  return gameArea(board, levelText(n + 1), who, role, idleScene(), controls({ text }));
 }
 
 // ---------- multiplayer rooms ----------
