@@ -72,8 +72,9 @@ function scene(extra, cls = "", style = "") {
 // started: ms since the kick when it was first shown here (a late viewer sees the end state at
 // once: negative delays). Fixed per kick, so re-rendering doesn't move the animation.
 const firstSeen = new Map();
+let heldKick = null; // the kick whose stopped bar was just on screen: its animation starts from 0
 function kickScene(id, k, startedNow) {
-  if (!firstSeen.has(id)) firstSeen.set(id, startedNow);
+  if (!firstSeen.has(id)) firstSeen.set(id, heldKick === id ? 0 : startedNow);
   const started = firstSeen.get(id);
   const tx = gx(k.bx);
   const ty = gy(k.by);
@@ -160,6 +161,7 @@ function stop(submit) {
     const s = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
     savePending(inp.id, { v: val, s });
     inp.b = v;
+    inp.doneAt = performance.now();
     submit(logic.sealOf(val, s));
   }
   inp.step++;
@@ -192,15 +194,35 @@ function inputView(id, role, level, submit) {
     <div class="pk-tap" @click=${doStop}>
       ${scene(svg`${keeperFigure()} ${takerFigure()}<circle cx=${SPOT[0]} cy=${SPOT[1]} r="7" class="pk-ballc" />${markers}`)}
     </div>
-    ${step === 2
+    ${step >= 2
       ? html`<div class="pk-bar ${taker ? "" : "reach"}">
           <div class="pk-green" style="left:${(lo * 100).toFixed(1)}%; width:${((hi - lo) * 100).toFixed(1)}%"></div>
-          <div class="pk-ind" id="pk-ind"></div>
+          <div class="pk-ind ${step === 3 ? "stopped" : ""}" id="pk-ind" style=${step === 3 ? `left:${(inp.b * 100).toFixed(1)}%` : ""}></div>
         </div>`
       : nothing}
-    <p class="pk-step"><b>${step + 1}/3</b> ${t(steps[step])}</p>
-    <button class="primary pk-stop" @click=${doStop}>✋ ${t("pkStop")}</button>
+    ${step === 3
+      ? html`<p class="pk-step pk-verdict ${inp.b >= lo && inp.b <= hi ? "good" : "bad"}">${verdict(taker, inp.b, lo, hi)}</p>
+          <button class="primary pk-stop" disabled>✋ ${t("pkStop")}</button>`
+      : html`<p class="pk-step"><b>${step + 1}/3</b> ${t(steps[step])}</p>
+          <button class="primary pk-stop" @click=${doStop}>✋ ${t("pkStop")}</button>`}
   </div>`;
+}
+
+// What the stopped bar means, shown for a moment after the last tap.
+function verdict(taker, b, lo, hi) {
+  if (b >= lo && b <= hi) return "✅ " + t("pkPerfect");
+  if (!taker) return "⚠️ " + t("pkShortReach");
+  return "⚠️ " + t(b > hi ? "pkTooStrong" : "pkTooWeak");
+}
+const HOLD_MS = 1300; // how long the stopped bar stays on screen
+
+// Brings the scoreboard to the top of the screen once per phase (taking / watching a kick), so the
+// scene and the STOP button fit without scrolling on a phone.
+let scrolledFor = null;
+function scrollToGame(key) {
+  if (scrolledFor === key) return;
+  scrolledFor = key;
+  setTimeout(() => document.querySelector(".pk-board")?.scrollIntoView({ block: "start", behavior: "smooth" }), 60);
 }
 
 // Waiting / watching: the scene with both figures standing.
@@ -236,6 +258,17 @@ function playView(room, me, now, nameOf, submit) {
   const ks = logic.kicks(room);
   const last = ks[ks.length - 1];
   const n = ks.length;
+  const idOf = (k) => `${room.code || "solo"}/${room.startedAt}/${k}`;
+  // my last tap stays on screen for a moment, even when the kick is already decided
+  const holdLeft = inp?.step === 3 && (inp.id === idOf(n) || inp.id === idOf(n - 1)) ? HOLD_MS - (performance.now() - inp.doneAt) : 0;
+  if (holdLeft > 0) {
+    heldKick = inp.id;
+    setTimeout(rerender, holdLeft + 20);
+    scrollToGame(inp.id);
+    return html`${scoreboard(room, nameOf)}
+      <p class="pk-head">${t("pkLevel", { n: Number(inp.id.split("/").pop()) + 1, lv: inp.level })}</p>
+      ${inputView(inp.id, inp.role, inp.level, submit)}`;
+  }
   const animating = last && now - last.t < logic.ANIM_MS;
   const level = logic.levelOf(n);
   const { taker, keeper } = logic.roles(room, n);
@@ -246,6 +279,7 @@ function playView(room, me, now, nameOf, submit) {
       ${shown > 2 * logic.KICKS ? html`<b class="pk-sd">⚡ ${t("pkSudden")}</b> · ` : nothing}
       ${t("pkLevel", { n: shown, lv: logic.levelOf(shown - 1) })}
     </p>`;
+  scrollToGame(`${room.startedAt}/${shown}/${animating || room.status === "ended" ? "kick" : "next"}`);
   if (animating || room.status === "ended") {
     return html`${head}
       <p class="pk-who">${t("pkWatchTake", { taker: nameOf(last.taker), keeper: nameOf(last.keeper) })}</p>

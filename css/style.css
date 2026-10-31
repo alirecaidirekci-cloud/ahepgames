@@ -516,7 +516,10 @@ circle.pk-aim, circle.pk-glovemark, .pk-aim circle, .pk-glovemark circle { fill:
 .pk-bar.reach { background: linear-gradient(90deg, #3a4a6b, #f5c400); }
 .pk-green { position: absolute; top: 0; bottom: 0; background: #2ecc71; }
 .pk-ind { position: absolute; top: -2px; bottom: -2px; width: 4px; margin-left: -2px; background: #fff; box-shadow: 0 0 4px #000; }
-.pk-board { padding: 8px 12px; }
+.pk-board { padding: 8px 12px; scroll-margin-top: 72px; }
+.pk-ind.stopped { width: 6px; margin-left: -3px; background: #fff; animation: pk-blink .35s ease-in-out 3; }
+.pk-verdict { font-weight: 700; font-size: 1.1em; } .pk-verdict.good { color: #2ecc71; } .pk-verdict.bad { color: #ff9f43; }
+@keyframes pk-blink { 50% { opacity: .2; } }
 .pk-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
 .pk-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pk-dots { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
